@@ -95,39 +95,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Home Services Section */}
-      <section className="py-16 md:py-24 bg-accent/5">
-        <div className="container">
-          <div className="text-center mb-10">
-            <div className="inline-flex items-center gap-2 rounded-full bg-accent/20 px-4 py-1.5 text-sm font-medium text-accent-foreground mb-4">
-              <Home className="h-4 w-4" />
-              Home Services
-            </div>
-            <h2 className="text-3xl font-bold font-display md:text-4xl">Free and Past</h2>
-            <p className="mt-2 text-muted-foreground max-w-2xl mx-auto">
-              We bring premium packages directly to your home with fast and reliable delivery services.
-            </p>
-          </div>
-          
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {[
-              { icon: Truck, title: "Free Delivery", desc: "Complimentary delivery on all orders within the city" },
-              { icon: Zap, title: "Express Service", desc: "Same-day delivery available for urgent orders" },
-              { icon: Home, title: "Home Setup", desc: "Professional arrangement and setup at your location" },
-            ].map((service, i) => (
-              <Card key={i} variant="interactive" className="animate-slide-up" style={{ animationDelay: `${i * 0.1}s` }}>
-                <CardContent className="p-6">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary mb-4">
-                    <service.icon className="h-6 w-6" />
-                  </div>
-                  <h3 className="font-semibold text-lg mb-2">{service.title}</h3>
-                  <p className="text-sm text-muted-foreground">{service.desc}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* Categories Section */}
       <section className="py-16 md:py-24">
