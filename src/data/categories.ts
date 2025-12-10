@@ -20,7 +20,7 @@ export interface Package {
 export interface PackageClass {
   id: string;
   name: string;
-  price: number;
+  priceRange: string;
   description: string;
 }
 
@@ -57,101 +57,164 @@ export const categories: Category[] = [
 
 export const packages: Package[] = [
   // Kayan Sallah Packages
-  {
-    id: "ks-1",
-    categoryId: "1",
-    name: "Sallah Essentials",
-    description: "Basic package with essential items for Eid celebration including clothing and accessories",
-    image: "/placeholder.svg",
-    hasClasses: true,
-    classes: [
-      { id: "vip", name: "VIP", price: 150000, description: "Premium quality with luxury items" },
-      { id: "special", name: "Special", price: 100000, description: "High quality with selected items" },
-      { id: "standard", name: "Standard", price: 75000, description: "Quality items for the family" },
-      { id: "regular", name: "Regular", price: 50000, description: "Essential items package" },
-    ],
-  },
-  {
-    id: "ks-2",
-    categoryId: "1",
-    name: "Family Sallah Bundle",
-    description: "Complete family package with items for the whole household",
-    image: "/placeholder.svg",
-    hasClasses: true,
-    classes: [
-      { id: "vip", name: "VIP", price: 300000, description: "Luxury family package" },
-      { id: "special", name: "Special", price: 200000, description: "Premium family selection" },
-      { id: "standard", name: "Standard", price: 150000, description: "Quality family bundle" },
-    ],
-  },
+  { id: "ks-1", categoryId: "1", name: "Alhaji Babba Package", description: "Premium package for the head of the family", image: "/placeholder.svg", hasClasses: true, classes: [
+    { id: "vip", name: "VIP", priceRange: "₦350,000 – ₦500,000", description: "Premium quality with luxury items" },
+    { id: "special", name: "Special", priceRange: "₦200,000 – ₦350,000", description: "High quality with selected items" },
+    { id: "standard", name: "Standard", priceRange: "₦50,000 – ₦200,000", description: "Quality items for the family" },
+    { id: "regular", name: "Regular", priceRange: "₦10,000 – ₦50,000", description: "Essential items package" },
+  ]},
+  { id: "ks-2", categoryId: "1", name: "Hajiya Babba Package", description: "Premium package for the matriarch", image: "/placeholder.svg", hasClasses: true, classes: [
+    { id: "vip", name: "VIP", priceRange: "₦350,000 – ₦500,000", description: "Premium quality with luxury items" },
+    { id: "special", name: "Special", priceRange: "₦200,000 – ₦350,000", description: "High quality with selected items" },
+    { id: "standard", name: "Standard", priceRange: "₦50,000 – ₦200,000", description: "Quality items for the family" },
+    { id: "regular", name: "Regular", priceRange: "₦10,000 – ₦50,000", description: "Essential items package" },
+  ]},
+  { id: "ks-3", categoryId: "1", name: "Manyan Yara Package", description: "Package for older children", image: "/placeholder.svg", hasClasses: true, classes: [
+    { id: "vip", name: "VIP", priceRange: "₦350,000 – ₦500,000", description: "Premium quality with luxury items" },
+    { id: "special", name: "Special", priceRange: "₦200,000 – ₦350,000", description: "High quality with selected items" },
+    { id: "standard", name: "Standard", priceRange: "₦50,000 – ₦200,000", description: "Quality items for the family" },
+    { id: "regular", name: "Regular", priceRange: "₦10,000 – ₦50,000", description: "Essential items package" },
+  ]},
+  { id: "ks-4", categoryId: "1", name: "Babban Yaya Package", description: "Package for the eldest sibling", image: "/placeholder.svg", hasClasses: true, classes: [
+    { id: "vip", name: "VIP", priceRange: "₦350,000 – ₦500,000", description: "Premium quality with luxury items" },
+    { id: "special", name: "Special", priceRange: "₦200,000 – ₦350,000", description: "High quality with selected items" },
+    { id: "standard", name: "Standard", priceRange: "₦50,000 – ₦200,000", description: "Quality items for the family" },
+    { id: "regular", name: "Regular", priceRange: "₦10,000 – ₦50,000", description: "Essential items package" },
+  ]},
+  { id: "ks-5", categoryId: "1", name: "Grandma Package", description: "Special package for grandmother", image: "/placeholder.svg", hasClasses: true, classes: [
+    { id: "vip", name: "VIP", priceRange: "₦350,000 – ₦500,000", description: "Premium quality with luxury items" },
+    { id: "special", name: "Special", priceRange: "₦200,000 – ₦350,000", description: "High quality with selected items" },
+    { id: "standard", name: "Standard", priceRange: "₦50,000 – ₦200,000", description: "Quality items for the family" },
+    { id: "regular", name: "Regular", priceRange: "₦10,000 – ₦50,000", description: "Essential items package" },
+  ]},
+  { id: "ks-6", categoryId: "1", name: "Marayu Package (Male)", description: "Package for orphan boys", image: "/placeholder.svg", hasClasses: true, classes: [
+    { id: "vip", name: "VIP", priceRange: "₦350,000 – ₦500,000", description: "Premium quality with luxury items" },
+    { id: "special", name: "Special", priceRange: "₦200,000 – ₦350,000", description: "High quality with selected items" },
+    { id: "standard", name: "Standard", priceRange: "₦50,000 – ₦200,000", description: "Quality items for the family" },
+    { id: "regular", name: "Regular", priceRange: "₦10,000 – ₦50,000", description: "Essential items package" },
+  ]},
+  { id: "ks-7", categoryId: "1", name: "Babbar Yaya Package", description: "Package for the eldest sister", image: "/placeholder.svg", hasClasses: true, classes: [
+    { id: "vip", name: "VIP", priceRange: "₦350,000 – ₦500,000", description: "Premium quality with luxury items" },
+    { id: "special", name: "Special", priceRange: "₦200,000 – ₦350,000", description: "High quality with selected items" },
+    { id: "standard", name: "Standard", priceRange: "₦50,000 – ₦200,000", description: "Quality items for the family" },
+    { id: "regular", name: "Regular", priceRange: "₦10,000 – ₦50,000", description: "Essential items package" },
+  ]},
+  { id: "ks-8", categoryId: "1", name: "Grandpa Package", description: "Special package for grandfather", image: "/placeholder.svg", hasClasses: true, classes: [
+    { id: "vip", name: "VIP", priceRange: "₦350,000 – ₦500,000", description: "Premium quality with luxury items" },
+    { id: "special", name: "Special", priceRange: "₦200,000 – ₦350,000", description: "High quality with selected items" },
+    { id: "standard", name: "Standard", priceRange: "₦50,000 – ₦200,000", description: "Quality items for the family" },
+    { id: "regular", name: "Regular", priceRange: "₦10,000 – ₦50,000", description: "Essential items package" },
+  ]},
+  { id: "ks-9", categoryId: "1", name: "Marayu Package (Female)", description: "Package for orphan girls", image: "/placeholder.svg", hasClasses: true, classes: [
+    { id: "vip", name: "VIP", priceRange: "₦350,000 – ₦500,000", description: "Premium quality with luxury items" },
+    { id: "special", name: "Special", priceRange: "₦200,000 – ₦350,000", description: "High quality with selected items" },
+    { id: "standard", name: "Standard", priceRange: "₦50,000 – ₦200,000", description: "Quality items for the family" },
+    { id: "regular", name: "Regular", priceRange: "₦10,000 – ₦50,000", description: "Essential items package" },
+  ]},
+  { id: "ks-10", categoryId: "1", name: "Dan Lele Package", description: "Package for young boys", image: "/placeholder.svg", hasClasses: true, classes: [
+    { id: "vip", name: "VIP", priceRange: "₦350,000 – ₦500,000", description: "Premium quality with luxury items" },
+    { id: "special", name: "Special", priceRange: "₦200,000 – ₦350,000", description: "High quality with selected items" },
+    { id: "standard", name: "Standard", priceRange: "₦50,000 – ₦200,000", description: "Quality items for the family" },
+    { id: "regular", name: "Regular", priceRange: "₦10,000 – ₦50,000", description: "Essential items package" },
+  ]},
+  { id: "ks-11", categoryId: "1", name: "Hadimai Package (Male)", description: "Package for male helpers", image: "/placeholder.svg", hasClasses: true, classes: [
+    { id: "vip", name: "VIP", priceRange: "₦350,000 – ₦500,000", description: "Premium quality with luxury items" },
+    { id: "special", name: "Special", priceRange: "₦200,000 – ₦350,000", description: "High quality with selected items" },
+    { id: "standard", name: "Standard", priceRange: "₦50,000 – ₦200,000", description: "Quality items for the family" },
+    { id: "regular", name: "Regular", priceRange: "₦10,000 – ₦50,000", description: "Essential items package" },
+  ]},
+  { id: "ks-12", categoryId: "1", name: "Masses (Male)", description: "Affordable package for men", image: "/placeholder.svg", hasClasses: true, classes: [
+    { id: "vip", name: "VIP", priceRange: "₦350,000 – ₦500,000", description: "Premium quality with luxury items" },
+    { id: "special", name: "Special", priceRange: "₦200,000 – ₦350,000", description: "High quality with selected items" },
+    { id: "standard", name: "Standard", priceRange: "₦50,000 – ₦200,000", description: "Quality items for the family" },
+    { id: "regular", name: "Regular", priceRange: "₦10,000 – ₦50,000", description: "Essential items package" },
+  ]},
+  { id: "ks-13", categoryId: "1", name: "Distribution Package (Male)", description: "Bulk distribution package for men", image: "/placeholder.svg", hasClasses: true, classes: [
+    { id: "vip", name: "VIP", priceRange: "₦350,000 – ₦500,000", description: "Premium quality with luxury items" },
+    { id: "special", name: "Special", priceRange: "₦200,000 – ₦350,000", description: "High quality with selected items" },
+    { id: "standard", name: "Standard", priceRange: "₦50,000 – ₦200,000", description: "Quality items for the family" },
+    { id: "regular", name: "Regular", priceRange: "₦10,000 – ₦50,000", description: "Essential items package" },
+  ]},
+  { id: "ks-14", categoryId: "1", name: "Hadimai Package (Female)", description: "Package for female helpers", image: "/placeholder.svg", hasClasses: true, classes: [
+    { id: "vip", name: "VIP", priceRange: "₦350,000 – ₦500,000", description: "Premium quality with luxury items" },
+    { id: "special", name: "Special", priceRange: "₦200,000 – ₦350,000", description: "High quality with selected items" },
+    { id: "standard", name: "Standard", priceRange: "₦50,000 – ₦200,000", description: "Quality items for the family" },
+    { id: "regular", name: "Regular", priceRange: "₦10,000 – ₦50,000", description: "Essential items package" },
+  ]},
+  { id: "ks-15", categoryId: "1", name: "Masses (Female)", description: "Affordable package for women", image: "/placeholder.svg", hasClasses: true, classes: [
+    { id: "vip", name: "VIP", priceRange: "₦350,000 – ₦500,000", description: "Premium quality with luxury items" },
+    { id: "special", name: "Special", priceRange: "₦200,000 – ₦350,000", description: "High quality with selected items" },
+    { id: "standard", name: "Standard", priceRange: "₦50,000 – ₦200,000", description: "Quality items for the family" },
+    { id: "regular", name: "Regular", priceRange: "₦10,000 – ₦50,000", description: "Essential items package" },
+  ]},
+  { id: "ks-16", categoryId: "1", name: "Distribution Package (Female)", description: "Bulk distribution package for women", image: "/placeholder.svg", hasClasses: true, classes: [
+    { id: "vip", name: "VIP", priceRange: "₦350,000 – ₦500,000", description: "Premium quality with luxury items" },
+    { id: "special", name: "Special", priceRange: "₦200,000 – ₦350,000", description: "High quality with selected items" },
+    { id: "standard", name: "Standard", priceRange: "₦50,000 – ₦200,000", description: "Quality items for the family" },
+    { id: "regular", name: "Regular", priceRange: "₦10,000 – ₦50,000", description: "Essential items package" },
+  ]},
+  { id: "ks-17", categoryId: "1", name: "Ya Imam Package", description: "Special package for religious leaders", image: "/placeholder.svg", hasClasses: true, classes: [
+    { id: "vip", name: "VIP", priceRange: "₦350,000 – ₦500,000", description: "Premium quality with luxury items" },
+    { id: "special", name: "Special", priceRange: "₦200,000 – ₦350,000", description: "High quality with selected items" },
+    { id: "standard", name: "Standard", priceRange: "₦50,000 – ₦200,000", description: "Quality items for the family" },
+    { id: "regular", name: "Regular", priceRange: "₦10,000 – ₦50,000", description: "Essential items package" },
+  ]},
+  { id: "ks-18", categoryId: "1", name: "Family Combo Package", description: "Complete package for the entire family", image: "/placeholder.svg", hasClasses: true, classes: [
+    { id: "vip", name: "VIP", priceRange: "₦350,000 – ₦500,000", description: "Premium quality with luxury items" },
+    { id: "special", name: "Special", priceRange: "₦200,000 – ₦350,000", description: "High quality with selected items" },
+    { id: "standard", name: "Standard", priceRange: "₦50,000 – ₦200,000", description: "Quality items for the family" },
+    { id: "regular", name: "Regular", priceRange: "₦10,000 – ₦50,000", description: "Essential items package" },
+  ]},
+  { id: "ks-19", categoryId: "1", name: "Iyayen Na Package", description: "Package for parents", image: "/placeholder.svg", hasClasses: true, classes: [
+    { id: "vip", name: "VIP", priceRange: "₦350,000 – ₦500,000", description: "Premium quality with luxury items" },
+    { id: "special", name: "Special", priceRange: "₦200,000 – ₦350,000", description: "High quality with selected items" },
+    { id: "standard", name: "Standard", priceRange: "₦50,000 – ₦200,000", description: "Quality items for the family" },
+    { id: "regular", name: "Regular", priceRange: "₦10,000 – ₦50,000", description: "Essential items package" },
+  ]},
+  { id: "ks-20", categoryId: "1", name: "Yar Lele Package", description: "Package for young girls", image: "/placeholder.svg", hasClasses: true, classes: [
+    { id: "vip", name: "VIP", priceRange: "₦350,000 – ₦500,000", description: "Premium quality with luxury items" },
+    { id: "special", name: "Special", priceRange: "₦200,000 – ₦350,000", description: "High quality with selected items" },
+    { id: "standard", name: "Standard", priceRange: "₦50,000 – ₦200,000", description: "Quality items for the family" },
+    { id: "regular", name: "Regular", priceRange: "₦10,000 – ₦50,000", description: "Essential items package" },
+  ]},
+  
   // Kayan Lefe Packages
-  {
-    id: "kl-1",
-    categoryId: "2",
-    name: "Bridal Complete",
-    description: "Everything the bride needs for her special day",
-    image: "/placeholder.svg",
-    hasClasses: true,
-    classes: [
-      { id: "vip", name: "VIP", price: 500000, description: "Ultimate luxury bridal package" },
-      { id: "special", name: "Special", price: 350000, description: "Premium bridal collection" },
-      { id: "standard", name: "Standard", price: 250000, description: "Beautiful bridal essentials" },
-    ],
-  },
-  {
-    id: "kl-2",
-    categoryId: "2",
-    name: "Wedding Celebration",
-    description: "Party supplies and decoration package for the ceremony",
-    image: "/placeholder.svg",
-    hasClasses: false,
-    basePrice: 180000,
-  },
+  { id: "kl-1", categoryId: "2", name: "Amarya mai capacity", description: "Complete bridal package with everything needed", image: "/placeholder.svg", hasClasses: true, classes: [
+    { id: "vip", name: "VIP", priceRange: "₦500,000+", description: "Ultimate luxury bridal package" },
+    { id: "special", name: "Special", priceRange: "₦300,000 – ₦500,000", description: "Premium bridal collection" },
+    { id: "standard", name: "Standard", priceRange: "₦150,000 – ₦300,000", description: "Beautiful bridal essentials" },
+  ]},
+  { id: "kl-2", categoryId: "2", name: "Daga ke ba kari", description: "Essential bridal starter package", image: "/placeholder.svg", hasClasses: true, classes: [
+    { id: "vip", name: "VIP", priceRange: "₦400,000+", description: "Luxury starter package" },
+    { id: "special", name: "Special", priceRange: "₦200,000 – ₦400,000", description: "Premium starter collection" },
+    { id: "standard", name: "Standard", priceRange: "₦100,000 – ₦200,000", description: "Essential starter items" },
+  ]},
+  
   // Haihuwa Packages
-  {
-    id: "hh-1",
-    categoryId: "3",
-    name: "Baby Welcome",
-    description: "Complete naming ceremony package with all essentials",
-    image: "/placeholder.svg",
-    hasClasses: true,
-    classes: [
-      { id: "vip", name: "VIP", price: 120000, description: "Premium baby welcome set" },
-      { id: "special", name: "Special", price: 80000, description: "Special baby collection" },
-      { id: "regular", name: "Regular", price: 50000, description: "Essential baby items" },
-    ],
-  },
-  {
-    id: "hh-2",
-    categoryId: "3",
-    name: "Mother & Baby Care",
-    description: "Care package for new mother and baby",
-    image: "/placeholder.svg",
-    hasClasses: false,
-    basePrice: 95000,
-  },
+  { id: "hh-1", categoryId: "3", name: "Baby Welcome", description: "Complete naming ceremony package with all essentials", image: "/placeholder.svg", hasClasses: true, classes: [
+    { id: "vip", name: "VIP", priceRange: "₦120,000+", description: "Premium baby welcome set" },
+    { id: "special", name: "Special", priceRange: "₦60,000 – ₦120,000", description: "Special baby collection" },
+    { id: "regular", name: "Regular", priceRange: "₦30,000 – ₦60,000", description: "Essential baby items" },
+  ]},
+  { id: "hh-2", categoryId: "3", name: "Mother & Baby Care", description: "Care package for new mother and baby", image: "/placeholder.svg", hasClasses: false, basePrice: 95000 },
+  
   // Seasonal Packages
-  {
-    id: "sp-1",
-    categoryId: "4",
-    name: "Ramadan Special",
-    description: "Special Ramadan package with prayer essentials and more",
-    image: "/placeholder.svg",
-    hasClasses: true,
-    classes: [
-      { id: "vip", name: "VIP", price: 200000, description: "Complete Ramadan luxury set" },
-      { id: "standard", name: "Standard", price: 100000, description: "Essential Ramadan package" },
-    ],
-  },
-  {
-    id: "sp-2",
-    categoryId: "4",
-    name: "Year-End Bundle",
-    description: "Special end of year celebration package",
-    image: "/placeholder.svg",
-    hasClasses: false,
-    basePrice: 75000,
-  },
+  { id: "sp-1", categoryId: "4", name: "Ramadan", description: "Special Ramadan package with prayer essentials and more", image: "/placeholder.svg", hasClasses: true, classes: [
+    { id: "vip", name: "VIP", priceRange: "₦200,000+", description: "Complete Ramadan luxury set" },
+    { id: "standard", name: "Standard", priceRange: "₦50,000 – ₦200,000", description: "Essential Ramadan package" },
+  ]},
+  { id: "sp-2", categoryId: "4", name: "Harmattan", description: "Special harmattan season package", image: "/placeholder.svg", hasClasses: true, classes: [
+    { id: "vip", name: "VIP", priceRange: "₦150,000+", description: "Complete harmattan luxury set" },
+    { id: "standard", name: "Standard", priceRange: "₦50,000 – ₦150,000", description: "Essential harmattan package" },
+  ]},
+  { id: "sp-3", categoryId: "4", name: "Raining", description: "Rainy season essentials package", image: "/placeholder.svg", hasClasses: true, classes: [
+    { id: "vip", name: "VIP", priceRange: "₦150,000+", description: "Complete rainy season set" },
+    { id: "standard", name: "Standard", priceRange: "₦50,000 – ₦150,000", description: "Essential rainy season package" },
+  ]},
+  { id: "sp-4", categoryId: "4", name: "Back to School", description: "Back to school essentials for students", image: "/placeholder.svg", hasClasses: true, classes: [
+    { id: "vip", name: "VIP", priceRange: "₦100,000+", description: "Complete school luxury set" },
+    { id: "standard", name: "Standard", priceRange: "₦30,000 – ₦100,000", description: "Essential school package" },
+  ]},
 ];
 
 export function getCategoryBySlug(slug: string): Category | undefined {

@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Mail, Phone, Lock, ArrowLeft } from "lucide-react";
+import logo from "@/assets/logo.png";
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
@@ -51,9 +52,7 @@ export default function Login() {
           <Card variant="elevated">
             <CardHeader className="text-center pb-2">
               <div className="flex justify-center mb-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary text-primary-foreground font-display font-bold text-2xl">
-                  M
-                </div>
+                <img src={logo} alt="M. Abba Gallery" className="h-16 w-auto" />
               </div>
               <CardTitle className="text-2xl">Welcome Back</CardTitle>
               <CardDescription>

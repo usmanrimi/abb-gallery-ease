@@ -3,7 +3,8 @@ import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { categories } from "@/data/categories";
-import { ArrowRight, Package, Truck, CreditCard, Shield, Star, ChevronRight } from "lucide-react";
+import { ArrowRight, Package, Truck, CreditCard, Shield, Star, ChevronRight, Home, Zap } from "lucide-react";
+import logo from "@/assets/logo.png";
 
 const Index = () => {
   return (
@@ -16,6 +17,9 @@ const Index = () => {
               <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
                 <Star className="h-4 w-4 fill-current" />
                 Trusted by 10,000+ customers
+              </div>
+              <div className="flex items-center gap-4 mb-4">
+                <img src={logo} alt="M. Abba Gallery" className="h-20 w-auto" />
               </div>
               <h1 className="text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl font-display text-balance">
                 Shopping Made{" "}
@@ -63,7 +67,7 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Features Section */}
+      {/* Features Section - Quality Packages */}
       <section className="border-y bg-muted/30">
         <div className="container py-12">
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
@@ -86,6 +90,40 @@ const Index = () => {
                   <p className="text-sm text-muted-foreground">{feature.desc}</p>
                 </div>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Home Services Section */}
+      <section className="py-16 md:py-24 bg-accent/5">
+        <div className="container">
+          <div className="text-center mb-10">
+            <div className="inline-flex items-center gap-2 rounded-full bg-accent/20 px-4 py-1.5 text-sm font-medium text-accent-foreground mb-4">
+              <Home className="h-4 w-4" />
+              Home Services
+            </div>
+            <h2 className="text-3xl font-bold font-display md:text-4xl">Free and Past</h2>
+            <p className="mt-2 text-muted-foreground max-w-2xl mx-auto">
+              We bring premium packages directly to your home with fast and reliable delivery services.
+            </p>
+          </div>
+          
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              { icon: Truck, title: "Free Delivery", desc: "Complimentary delivery on all orders within the city" },
+              { icon: Zap, title: "Express Service", desc: "Same-day delivery available for urgent orders" },
+              { icon: Home, title: "Home Setup", desc: "Professional arrangement and setup at your location" },
+            ].map((service, i) => (
+              <Card key={i} variant="interactive" className="animate-slide-up" style={{ animationDelay: `${i * 0.1}s` }}>
+                <CardContent className="p-6">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary mb-4">
+                    <service.icon className="h-6 w-6" />
+                  </div>
+                  <h3 className="font-semibold text-lg mb-2">{service.title}</h3>
+                  <p className="text-sm text-muted-foreground">{service.desc}</p>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </div>

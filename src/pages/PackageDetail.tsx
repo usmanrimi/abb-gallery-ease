@@ -37,7 +37,8 @@ export default function PackageDetail() {
   }
 
   const selectedClassData = pkg.classes?.find((c) => c.id === selectedClass);
-  const unitPrice = selectedClassData?.price || pkg.basePrice || 0;
+  // Use basePrice or estimate from priceRange for calculation purposes
+  const unitPrice = pkg.basePrice || 50000; // Base estimate, actual price will be calculated by admin
   const totalPrice = unitPrice * quantity;
 
   const handleAddToCart = () => {
@@ -123,8 +124,8 @@ export default function PackageDetail() {
                           <div className="flex-1">
                             <div className="flex items-center justify-between">
                               <span className="font-semibold">{cls.name}</span>
-                              <span className="font-bold text-primary">
-                                {formatPrice(cls.price)}
+                              <span className="font-bold text-primary text-sm">
+                                {cls.priceRange}
                               </span>
                             </div>
                             <p className="text-sm text-muted-foreground mt-1">
