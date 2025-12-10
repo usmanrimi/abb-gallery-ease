@@ -8,14 +8,14 @@ import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, User, Lock, ArrowLeft, Shield } from "lucide-react";
 import logo from "@/assets/logo.png";
 
-const ADMIN_USERNAME = "MAGKS2025";
+const ADMIN_EMAIL = "usmanauwalahmadrimi@gmail.com";
 const ADMIN_PASSWORD = "MAGKS2025";
 
 export default function AdminLogin() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    username: "",
+    email: "",
     password: "",
   });
   const navigate = useNavigate();
@@ -28,7 +28,7 @@ export default function AdminLogin() {
     setTimeout(() => {
       setIsLoading(false);
       
-      if (formData.username === ADMIN_USERNAME && formData.password === ADMIN_PASSWORD) {
+      if (formData.email === ADMIN_EMAIL && formData.password === ADMIN_PASSWORD) {
         toast({
           title: "Welcome, Admin!",
           description: "You have successfully signed in.",
@@ -68,17 +68,17 @@ export default function AdminLogin() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
+                <Label htmlFor="email">Email</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    id="username"
-                    type="text"
-                    placeholder="Enter admin username"
+                    id="email"
+                    type="email"
+                    placeholder="Enter admin email"
                     className="pl-10"
-                    value={formData.username}
+                    value={formData.email}
                     onChange={(e) =>
-                      setFormData({ ...formData, username: e.target.value })
+                      setFormData({ ...formData, email: e.target.value })
                     }
                     required
                   />
