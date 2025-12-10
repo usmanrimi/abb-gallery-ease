@@ -5,13 +5,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Mail, Lock, ArrowLeft, Shield } from "lucide-react";
+import { Eye, EyeOff, User, Lock, ArrowLeft, Shield } from "lucide-react";
+import logo from "@/assets/logo.png";
+
+const ADMIN_USERNAME = "MAGKS2025";
+const ADMIN_PASSWORD = "MAGKS2025";
 
 export default function AdminLogin() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    email: "",
+    username: "",
     password: "",
   });
   const navigate = useNavigate();
@@ -21,14 +25,22 @@ export default function AdminLogin() {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate login
     setTimeout(() => {
       setIsLoading(false);
-      toast({
-        title: "Welcome, Admin!",
-        description: "You have successfully signed in.",
-      });
-      navigate("/admin");
+      
+      if (formData.username === ADMIN_USERNAME && formData.password === ADMIN_PASSWORD) {
+        toast({
+          title: "Welcome, Admin!",
+          description: "You have successfully signed in.",
+        });
+        navigate("/admin");
+      } else {
+        toast({
+          title: "Invalid credentials",
+          description: "Please check your username and password.",
+          variant: "destructive",
+        });
+      }
     }, 1500);
   };
 
@@ -46,9 +58,7 @@ export default function AdminLogin() {
         <Card variant="elevated">
           <CardHeader className="text-center pb-2">
             <div className="flex justify-center mb-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                <Shield className="h-7 w-7" />
-              </div>
+              <img src={logo} alt="M. Abba Gallery" className="h-16 w-auto" />
             </div>
             <CardTitle className="text-2xl">Admin Login</CardTitle>
             <CardDescription>
@@ -58,17 +68,17 @@ export default function AdminLogin() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="username">Username</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    id="email"
-                    type="email"
-                    placeholder="admin@mabbagallery.com"
+                    id="username"
+                    type="text"
+                    placeholder="Enter admin username"
                     className="pl-10"
-                    value={formData.email}
+                    value={formData.username}
                     onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
+                      setFormData({ ...formData, username: e.target.value })
                     }
                     required
                   />
@@ -112,7 +122,7 @@ export default function AdminLogin() {
         </Card>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          M. Abba Gallery Admin Portal
+          M. Abba Gallery Admin Portal – Shopping Made Easy
         </p>
       </div>
     </div>

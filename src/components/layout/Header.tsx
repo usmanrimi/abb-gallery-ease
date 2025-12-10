@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ShoppingBag, User, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import logo from "@/assets/logo.png";
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -21,12 +22,10 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground font-display font-bold text-lg">
-            M
-          </div>
+          <img src={logo} alt="M. Abba Gallery Logo" className="h-12 w-auto" />
           <div className="flex flex-col">
-            <span className="font-display font-semibold text-lg leading-tight">M. Abba</span>
-            <span className="text-xs text-muted-foreground leading-tight">Gallery</span>
+            <span className="font-display font-semibold text-lg leading-tight">M. Abba Gallery</span>
+            <span className="text-xs text-muted-foreground leading-tight">Shopping Made Easy</span>
           </div>
         </Link>
 

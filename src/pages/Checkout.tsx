@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { formatPrice } from "@/data/categories";
-import { ChevronRight, CreditCard, Calendar, Truck, CheckCircle2 } from "lucide-react";
+import { ChevronRight, CreditCard, Calendar, Truck, CheckCircle2, User, Mail, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
@@ -29,6 +29,13 @@ export default function Checkout() {
   const [deliveryDate, setDeliveryDate] = useState("");
   const [deliveryTime, setDeliveryTime] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Customer contact information
+  const [customerInfo, setCustomerInfo] = useState({
+    fullName: "",
+    email: "",
+    whatsappNumber: "",
+  });
 
   if (!orderData) {
     return (
@@ -54,7 +61,18 @@ export default function Checkout() {
     ? finalPrice / parseInt(selectedPlan.id)
     : 0;
 
+  const isFormValid = customerInfo.fullName.trim() && customerInfo.email.trim() && customerInfo.whatsappNumber.trim();
+
   const handleSubmit = () => {
+    if (!isFormValid) {
+      toast({
+        title: "Please fill in all required fields",
+        description: "Full Name, Email, and WhatsApp Number are required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     
     setTimeout(() => {
@@ -67,6 +85,7 @@ export default function Checkout() {
           deliveryDate,
           deliveryTime,
           finalPrice,
+          customerInfo,
         },
       });
     }, 1500);
@@ -102,7 +121,7 @@ export default function Checkout() {
                     <h3 className="font-semibold">{pkg.name}</h3>
                     {selectedClass && (
                       <p className="text-sm text-muted-foreground">
-                        Class: {selectedClass.name}
+                        Class: {selectedClass.name} ({selectedClass.priceRange})
                       </p>
                     )}
                     <p className="text-sm text-muted-foreground">
@@ -116,6 +135,62 @@ export default function Checkout() {
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-lg">{formatPrice(totalPrice)}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Customer Contact Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5 text-primary" />
+                  Contact Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="fullName">Full Name *</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="fullName"
+                      placeholder="Enter your full name"
+                      className="pl-10"
+                      value={customerInfo.fullName}
+                      onChange={(e) => setCustomerInfo({ ...customerInfo, fullName: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email Address *</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="Enter your email address"
+                      className="pl-10"
+                      value={customerInfo.email}
+                      onChange={(e) => setCustomerInfo({ ...customerInfo, email: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="whatsappNumber">WhatsApp Number *</Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="whatsappNumber"
+                      type="tel"
+                      placeholder="e.g., +234 801 234 5678"
+                      className="pl-10"
+                      value={customerInfo.whatsappNumber}
+                      onChange={(e) => setCustomerInfo({ ...customerInfo, whatsappNumber: e.target.value })}
+                      required
+                    />
                   </div>
                 </div>
               </CardContent>
@@ -285,9 +360,9 @@ export default function Checkout() {
                   className="w-full"
                   size="lg"
                   onClick={handleSubmit}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !isFormValid}
                 >
-                  {isSubmitting ? "Submitting..." : "Submit Order"}
+                  {isSubmitting ? "Submitting..." : "Calculate Cost"}
                 </Button>
 
                 <p className="text-xs text-center text-muted-foreground">
