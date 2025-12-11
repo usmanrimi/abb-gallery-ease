@@ -1,16 +1,22 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Mail, Phone, Lock, User, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, Mail, Phone, Lock, User, ArrowLeft, Shield, ShoppingBag } from "lucide-react";
+import logo from "@/assets/logo.png";
+import { useAuth } from "@/contexts/AuthContext";
+
+type UserRole = "admin" | "customer";
 
 export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [role, setRole] = useState<UserRole>("customer");
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -20,6 +26,14 @@ export default function Register() {
   });
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { signUp, user, loading } = useAuth();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!loading && user) {
+      navigate("/");
+    }
+  }, [user, loading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,18 +47,46 @@ export default function Register() {
       return;
     }
 
+    if (formData.password.length < 6) {
+      toast({
+        title: "Password too short",
+        description: "Password must be at least 6 characters.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
-    // Simulate registration
-    setTimeout(() => {
-      setIsLoading(false);
+    const { error } = await signUp(formData.email, formData.password, formData.fullName, role);
+
+    if (error) {
       toast({
-        title: "Account created!",
-        description: "Welcome to M. Abba Gallery. Please verify your email/phone.",
+        title: "Registration failed",
+        description: error.message || "Could not create account. Please try again.",
+        variant: "destructive",
       });
-      navigate("/login");
-    }, 1500);
+      setIsLoading(false);
+      return;
+    }
+
+    toast({
+      title: "Account created!",
+      description: `Welcome to M. Abba Gallery as ${role === "admin" ? "an Admin" : "a Customer"}.`,
+    });
+    setIsLoading(false);
+    navigate("/login");
   };
+
+  if (loading) {
+    return (
+      <Layout hideFooter>
+        <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout hideFooter>
@@ -61,9 +103,7 @@ export default function Register() {
           <Card variant="elevated">
             <CardHeader className="text-center pb-2">
               <div className="flex justify-center mb-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary text-primary-foreground font-display font-bold text-2xl">
-                  M
-                </div>
+                <img src={logo} alt="M. Abba Gallery" className="h-16 w-auto" />
               </div>
               <CardTitle className="text-2xl">Create Account</CardTitle>
               <CardDescription>
@@ -72,6 +112,47 @@ export default function Register() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Role Selection */}
+                <div className="space-y-3">
+                  <Label>Account Type</Label>
+                  <RadioGroup
+                    value={role}
+                    onValueChange={(value) => setRole(value as UserRole)}
+                    className="grid grid-cols-2 gap-4"
+                  >
+                    <div className="relative">
+                      <RadioGroupItem
+                        value="customer"
+                        id="customer"
+                        className="peer sr-only"
+                      />
+                      <Label
+                        htmlFor="customer"
+                        className="flex flex-col items-center justify-center rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 cursor-pointer transition-all"
+                      >
+                        <ShoppingBag className="mb-2 h-6 w-6 text-primary" />
+                        <span className="font-medium">Customer</span>
+                        <span className="text-xs text-muted-foreground">Shop packages</span>
+                      </Label>
+                    </div>
+                    <div className="relative">
+                      <RadioGroupItem
+                        value="admin"
+                        id="admin"
+                        className="peer sr-only"
+                      />
+                      <Label
+                        htmlFor="admin"
+                        className="flex flex-col items-center justify-center rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 cursor-pointer transition-all"
+                      >
+                        <Shield className="mb-2 h-6 w-6 text-primary" />
+                        <span className="font-medium">Admin</span>
+                        <span className="text-xs text-muted-foreground">Manage store</span>
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="fullName">Full Name</Label>
                   <div className="relative">
@@ -133,13 +214,14 @@ export default function Register() {
                     <Input
                       id="password"
                       type={showPassword ? "text" : "password"}
-                      placeholder="Create a password"
+                      placeholder="Create a password (min 6 characters)"
                       className="pl-10 pr-10"
                       value={formData.password}
                       onChange={(e) =>
                         setFormData({ ...formData, password: e.target.value })
                       }
                       required
+                      minLength={6}
                     />
                     <button
                       type="button"

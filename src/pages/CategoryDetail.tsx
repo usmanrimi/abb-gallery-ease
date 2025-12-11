@@ -77,9 +77,9 @@ export default function CategoryDetail() {
                     <div>
                       {pkg.hasClasses && pkg.classes ? (
                         <span className="text-sm text-muted-foreground">
-                          Starting at{" "}
+                          Starting from{" "}
                           <span className="text-lg font-semibold text-foreground">
-                            {pkg.classes[pkg.classes.length - 1]?.priceRange}
+                            {formatPrice(pkg.classes[pkg.classes.length - 1]?.startingPrice || 0)}
                           </span>
                         </span>
                       ) : (

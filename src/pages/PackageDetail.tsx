@@ -125,7 +125,7 @@ export default function PackageDetail() {
                             <div className="flex items-center justify-between">
                               <span className="font-semibold">{cls.name}</span>
                               <span className="font-bold text-primary text-sm">
-                                {cls.priceRange}
+                                Starting from {formatPrice(cls.startingPrice)}
                               </span>
                             </div>
                             <p className="text-sm text-muted-foreground mt-1">
