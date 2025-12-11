@@ -50,19 +50,19 @@ export default function Contact() {
               {
                 icon: Phone,
                 title: "Phone",
-                content: "+234 801 234 5678",
-                href: "tel:+2348012345678",
+                content: "09081818121",
+                href: "tel:09081818121",
               },
               {
                 icon: Mail,
                 title: "Email",
-                content: "info@mabbagallery.com",
-                href: "mailto:info@mabbagallery.com",
+                content: "abbatrading2017@gmail.com",
+                href: "mailto:abbatrading2017@gmail.com",
               },
               {
                 icon: MapPin,
                 title: "Address",
-                content: "123 Shopping Lane, Lagos, Nigeria",
+                content: "Kabuga, Kano State, Nigeria",
               },
               {
                 icon: Clock,
@@ -131,7 +131,7 @@ export default function Contact() {
                     <Input
                       id="phone"
                       type="tel"
-                      placeholder="+234 801 234 5678"
+                      placeholder="09081818121"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     />

@@ -1,3 +1,9 @@
+import alhajiBabbaImg from "@/assets/packages/alhaji-babba.png";
+import hajiyaBabbaImg from "@/assets/packages/hajiya-babba.jpg";
+import manyanYaraImg from "@/assets/packages/manyan-yara.jpg";
+import babbanYayaImg from "@/assets/packages/babban-yaya.png";
+import grandmaImg from "@/assets/packages/grandma.png";
+
 export interface Category {
   id: string;
   name: string;
@@ -65,11 +71,11 @@ const kayanSallahClasses: PackageClass[] = [
 
 export const packages: Package[] = [
   // Kayan Sallah Packages
-  { id: "ks-1", categoryId: "1", name: "Alhaji Babba Package", description: "Premium package for the head of the family", image: "/placeholder.svg", hasClasses: true, classes: kayanSallahClasses },
-  { id: "ks-2", categoryId: "1", name: "Hajiya Babba Package", description: "Premium package for the matriarch", image: "/placeholder.svg", hasClasses: true, classes: kayanSallahClasses },
-  { id: "ks-3", categoryId: "1", name: "Manyan Yara Package", description: "Package for older children", image: "/placeholder.svg", hasClasses: true, classes: kayanSallahClasses },
-  { id: "ks-4", categoryId: "1", name: "Babban Yaya Package", description: "Package for the eldest sibling", image: "/placeholder.svg", hasClasses: true, classes: kayanSallahClasses },
-  { id: "ks-5", categoryId: "1", name: "Grandma Package", description: "Special package for grandmother", image: "/placeholder.svg", hasClasses: true, classes: kayanSallahClasses },
+  { id: "ks-1", categoryId: "1", name: "Alhaji Babba Package", description: "Premium package for the head of the family", image: alhajiBabbaImg, hasClasses: true, classes: kayanSallahClasses },
+  { id: "ks-2", categoryId: "1", name: "Hajiya Babba Package", description: "Premium package for the matriarch", image: hajiyaBabbaImg, hasClasses: true, classes: kayanSallahClasses },
+  { id: "ks-3", categoryId: "1", name: "Manyan Yara Package", description: "Package for older children", image: manyanYaraImg, hasClasses: true, classes: kayanSallahClasses },
+  { id: "ks-4", categoryId: "1", name: "Babban Yaya Package", description: "Package for the eldest sibling", image: babbanYayaImg, hasClasses: true, classes: kayanSallahClasses },
+  { id: "ks-5", categoryId: "1", name: "Grandma Package", description: "Special package for grandmother", image: grandmaImg, hasClasses: true, classes: kayanSallahClasses },
   { id: "ks-6", categoryId: "1", name: "Marayu Package (Male)", description: "Package for orphan boys", image: "/placeholder.svg", hasClasses: true, classes: kayanSallahClasses },
   { id: "ks-7", categoryId: "1", name: "Babbar Yaya Package", description: "Package for the eldest sister", image: "/placeholder.svg", hasClasses: true, classes: kayanSallahClasses },
   { id: "ks-8", categoryId: "1", name: "Grandpa Package", description: "Special package for grandfather", image: "/placeholder.svg", hasClasses: true, classes: kayanSallahClasses },

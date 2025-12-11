@@ -14,6 +14,113 @@ export type Database = {
   }
   public: {
     Tables: {
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          order_id: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          order_id?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          order_id?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          admin_response: string | null
+          created_at: string
+          customer_email: string
+          customer_name: string
+          customer_whatsapp: string
+          delivery_date: string | null
+          delivery_time: string | null
+          discount_amount: number | null
+          final_price: number
+          id: string
+          installment_plan: string | null
+          notes: string | null
+          package_class: string | null
+          package_name: string
+          payment_method: string
+          quantity: number
+          status: string
+          total_price: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_response?: string | null
+          created_at?: string
+          customer_email: string
+          customer_name: string
+          customer_whatsapp: string
+          delivery_date?: string | null
+          delivery_time?: string | null
+          discount_amount?: number | null
+          final_price: number
+          id?: string
+          installment_plan?: string | null
+          notes?: string | null
+          package_class?: string | null
+          package_name: string
+          payment_method: string
+          quantity?: number
+          status?: string
+          total_price: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_response?: string | null
+          created_at?: string
+          customer_email?: string
+          customer_name?: string
+          customer_whatsapp?: string
+          delivery_date?: string | null
+          delivery_time?: string | null
+          discount_amount?: number | null
+          final_price?: number
+          id?: string
+          installment_plan?: string | null
+          notes?: string | null
+          package_class?: string | null
+          package_name?: string
+          payment_method?: string
+          quantity?: number
+          status?: string
+          total_price?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null

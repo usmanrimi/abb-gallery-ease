@@ -74,9 +74,17 @@ export default function PackageDetail() {
           {/* Product Image */}
           <div className="animate-fade-in">
             <div className="aspect-square rounded-2xl bg-gradient-to-br from-primary/10 to-accent/10 relative overflow-hidden">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Package className="h-32 w-32 text-primary/30" />
-              </div>
+              {pkg.image && pkg.image !== "/placeholder.svg" ? (
+                <img
+                  src={pkg.image}
+                  alt={pkg.name}
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Package className="h-32 w-32 text-primary/30" />
+                </div>
+              )}
             </div>
           </div>
 
@@ -194,7 +202,7 @@ export default function PackageDetail() {
                 onClick={handleAddToCart}
               >
                 <ShoppingBag className="h-5 w-5 mr-2" />
-                Proceed to Checkout
+                Proceed Order
               </Button>
             </div>
 

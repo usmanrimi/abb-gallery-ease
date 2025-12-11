@@ -5,27 +5,30 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { formatPrice } from "@/data/categories";
-import { ChevronRight, CreditCard, Calendar, Truck, CheckCircle2, User, Mail, Phone } from "lucide-react";
+import { ChevronRight, CreditCard, Calendar, Truck, CheckCircle2, User, Mail, Phone, Percent } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
-const installmentPlans = [
-  { id: "3-months", label: "3 Months", multiplier: 1.05 },
-  { id: "6-months", label: "6 Months", multiplier: 1.08 },
-  { id: "12-months", label: "12 Months", multiplier: 1.12 },
+// Discount-based payment plans
+const discountPlans = [
+  { id: "one-time", label: "One-Time Payment", discount: 0.10, description: "10% discount" },
+  { id: "3-months", label: "3 Months", discount: 0.06, description: "6% discount" },
+  { id: "6-months", label: "6 Months", discount: 0.02, description: "2% discount" },
+  { id: "12-months", label: "12 Months", discount: 0, description: "0% discount" },
 ];
 
 export default function Checkout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const orderData = location.state as any;
 
-  const [paymentMethod, setPaymentMethod] = useState<"one-time" | "installment">("one-time");
-  const [installmentPlan, setInstallmentPlan] = useState("3-months");
+  const [paymentPlan, setPaymentPlan] = useState("one-time");
   const [deliveryDate, setDeliveryDate] = useState("");
   const [deliveryTime, setDeliveryTime] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -52,18 +55,17 @@ export default function Checkout() {
 
   const { package: pkg, selectedClass, quantity, notes, totalPrice } = orderData;
   
-  const selectedPlan = installmentPlans.find((p) => p.id === installmentPlan);
-  const finalPrice = paymentMethod === "installment" && selectedPlan
-    ? totalPrice * selectedPlan.multiplier
-    : totalPrice;
+  const selectedPlan = discountPlans.find((p) => p.id === paymentPlan);
+  const discountAmount = selectedPlan ? totalPrice * selectedPlan.discount : 0;
+  const finalPrice = totalPrice - discountAmount;
   
-  const monthlyPayment = paymentMethod === "installment" && selectedPlan
-    ? finalPrice / parseInt(selectedPlan.id)
+  const monthlyPayment = paymentPlan !== "one-time" && selectedPlan
+    ? finalPrice / parseInt(paymentPlan)
     : 0;
 
   const isFormValid = customerInfo.fullName.trim() && customerInfo.email.trim() && customerInfo.whatsappNumber.trim();
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!isFormValid) {
       toast({
         title: "Please fill in all required fields",
@@ -73,22 +75,60 @@ export default function Checkout() {
       return;
     }
 
+    if (!user) {
+      toast({
+        title: "Please login to submit order",
+        description: "You need to be logged in to place an order.",
+        variant: "destructive",
+      });
+      navigate("/login", { state: { from: location } });
+      return;
+    }
+
     setIsSubmitting(true);
     
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      const { error } = await supabase.from("orders").insert({
+        user_id: user.id,
+        package_name: pkg.name,
+        package_class: selectedClass?.name || null,
+        quantity,
+        notes: notes || null,
+        total_price: totalPrice,
+        final_price: finalPrice,
+        discount_amount: discountAmount,
+        payment_method: paymentPlan,
+        installment_plan: paymentPlan !== "one-time" ? paymentPlan : null,
+        delivery_date: deliveryDate || null,
+        delivery_time: deliveryTime || null,
+        customer_name: customerInfo.fullName,
+        customer_email: customerInfo.email,
+        customer_whatsapp: customerInfo.whatsappNumber,
+        status: "pending",
+      });
+
+      if (error) throw error;
+
       navigate("/order-confirmation", {
         state: {
           ...orderData,
-          paymentMethod,
-          installmentPlan: paymentMethod === "installment" ? installmentPlan : null,
+          paymentMethod: paymentPlan,
+          discountAmount,
           deliveryDate,
           deliveryTime,
           finalPrice,
           customerInfo,
         },
       });
-    }, 1500);
+    } catch (error: any) {
+      toast({
+        title: "Error submitting order",
+        description: error.message || "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -196,7 +236,7 @@ export default function Checkout() {
               </CardContent>
             </Card>
 
-            {/* Payment Method */}
+            {/* Payment Method with Discounts */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -206,82 +246,53 @@ export default function Checkout() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <RadioGroup
-                  value={paymentMethod}
-                  onValueChange={(v) => setPaymentMethod(v as "one-time" | "installment")}
-                  className="grid gap-4 sm:grid-cols-2"
+                  value={paymentPlan}
+                  onValueChange={setPaymentPlan}
+                  className="grid gap-3 sm:grid-cols-2"
                 >
-                  <Label
-                    htmlFor="one-time"
-                    className={cn(
-                      "flex flex-col gap-2 rounded-xl border-2 p-4 cursor-pointer transition-all",
-                      paymentMethod === "one-time"
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/50"
-                    )}
-                  >
-                    <div className="flex items-center gap-2">
-                      <RadioGroupItem value="one-time" id="one-time" />
-                      <span className="font-semibold">One-Time Payment</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground pl-6">
-                      Pay the full amount now
-                    </p>
-                  </Label>
-                  <Label
-                    htmlFor="installment"
-                    className={cn(
-                      "flex flex-col gap-2 rounded-xl border-2 p-4 cursor-pointer transition-all",
-                      paymentMethod === "installment"
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/50"
-                    )}
-                  >
-                    <div className="flex items-center gap-2">
-                      <RadioGroupItem value="installment" id="installment" />
-                      <span className="font-semibold">Installment Payment</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground pl-6">
-                      Split into monthly payments
-                    </p>
-                  </Label>
+                  {discountPlans.map((plan) => {
+                    const planDiscount = totalPrice * plan.discount;
+                    const planFinal = totalPrice - planDiscount;
+                    const planMonthly = plan.id !== "one-time" ? planFinal / parseInt(plan.id) : planFinal;
+                    return (
+                      <Label
+                        key={plan.id}
+                        htmlFor={plan.id}
+                        className={cn(
+                          "flex flex-col gap-2 rounded-xl border-2 p-4 cursor-pointer transition-all",
+                          paymentPlan === plan.id
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-primary/50"
+                        )}
+                      >
+                        <div className="flex items-center gap-2">
+                          <RadioGroupItem value={plan.id} id={plan.id} />
+                          <span className="font-semibold">{plan.label}</span>
+                        </div>
+                        <div className="pl-6 space-y-1">
+                          <div className="flex items-center gap-2 text-sm text-success">
+                            <Percent className="h-3 w-3" />
+                            {plan.description}
+                          </div>
+                          {plan.id !== "one-time" ? (
+                            <p className="text-sm text-muted-foreground">
+                              {formatPrice(planMonthly)}/month
+                            </p>
+                          ) : (
+                            <p className="text-sm text-muted-foreground">
+                              Pay {formatPrice(planFinal)} now
+                            </p>
+                          )}
+                          {plan.discount > 0 && (
+                            <p className="text-xs text-success">
+                              Save {formatPrice(planDiscount)}
+                            </p>
+                          )}
+                        </div>
+                      </Label>
+                    );
+                  })}
                 </RadioGroup>
-
-                {paymentMethod === "installment" && (
-                  <div className="space-y-3 animate-fade-in">
-                    <Label className="text-base font-semibold">Select Plan</Label>
-                    <RadioGroup
-                      value={installmentPlan}
-                      onValueChange={setInstallmentPlan}
-                      className="grid gap-3 sm:grid-cols-3"
-                    >
-                      {installmentPlans.map((plan) => {
-                        const planTotal = totalPrice * plan.multiplier;
-                        const monthly = planTotal / parseInt(plan.id);
-                        return (
-                          <Label
-                            key={plan.id}
-                            htmlFor={plan.id}
-                            className={cn(
-                              "flex flex-col items-center gap-1 rounded-xl border-2 p-4 cursor-pointer transition-all text-center",
-                              installmentPlan === plan.id
-                                ? "border-primary bg-primary/5"
-                                : "border-border hover:border-primary/50"
-                            )}
-                          >
-                            <RadioGroupItem value={plan.id} id={plan.id} className="sr-only" />
-                            <span className="font-semibold">{plan.label}</span>
-                            <span className="text-lg font-bold text-primary">
-                              {formatPrice(monthly)}/mo
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              Total: {formatPrice(planTotal)}
-                            </span>
-                          </Label>
-                        );
-                      })}
-                    </RadioGroup>
-                  </div>
-                )}
               </CardContent>
             </Card>
 
@@ -332,10 +343,10 @@ export default function Checkout() {
                   <span className="text-muted-foreground">Subtotal</span>
                   <span>{formatPrice(totalPrice)}</span>
                 </div>
-                {paymentMethod === "installment" && selectedPlan && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Interest</span>
-                    <span>{formatPrice(finalPrice - totalPrice)}</span>
+                {discountAmount > 0 && (
+                  <div className="flex justify-between text-sm text-success">
+                    <span>Discount ({selectedPlan?.description})</span>
+                    <span>-{formatPrice(discountAmount)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-sm">
@@ -349,9 +360,9 @@ export default function Checkout() {
                       {formatPrice(finalPrice)}
                     </span>
                   </div>
-                  {paymentMethod === "installment" && (
+                  {paymentPlan !== "one-time" && (
                     <p className="text-sm text-muted-foreground mt-1 text-right">
-                      {formatPrice(monthlyPayment)}/month for {installmentPlan.replace("-", " ")}
+                      {formatPrice(monthlyPayment)}/month for {paymentPlan.replace("-", " ")}
                     </p>
                   )}
                 </div>
@@ -362,7 +373,7 @@ export default function Checkout() {
                   onClick={handleSubmit}
                   disabled={isSubmitting || !isFormValid}
                 >
-                  {isSubmitting ? "Submitting..." : "Calculate Cost"}
+                  {isSubmitting ? "Submitting..." : "Submit Order"}
                 </Button>
 
                 <p className="text-xs text-center text-muted-foreground">
