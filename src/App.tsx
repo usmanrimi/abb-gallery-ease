@@ -4,10 +4,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import RegisterAdmin from "./pages/RegisterAdmin";
 import ForgotPassword from "./pages/ForgotPassword";
 import Categories from "./pages/Categories";
 import CategoryDetail from "./pages/CategoryDetail";
@@ -20,6 +22,12 @@ import About from "./pages/About";
 import Contact from "./pages/Contact";
 import CustomerDashboard from "./pages/CustomerDashboard";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminPackages from "./pages/admin/AdminPackages";
+import AdminCustomers from "./pages/admin/AdminCustomers";
+import AdminOrders from "./pages/admin/AdminOrders";
+import AdminDeliveries from "./pages/admin/AdminDeliveries";
+import AdminReports from "./pages/admin/AdminReports";
+import AdminSettings from "./pages/admin/AdminSettings";
 
 const queryClient = new QueryClient();
 
@@ -31,10 +39,11 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            {/* Customer Routes */}
+            {/* Public Routes */}
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/register/admin" element={<RegisterAdmin />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/categories" element={<Categories />} />
             <Route path="/categories/:slug" element={<CategoryDetail />} />
@@ -45,10 +54,50 @@ const App = () => (
             <Route path="/cart" element={<Cart />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
-            <Route path="/dashboard" element={<CustomerDashboard />} />
             
-            {/* Admin Routes */}
-            <Route path="/admin" element={<AdminDashboard />} />
+            {/* Protected Customer Routes */}
+            <Route path="/dashboard" element={
+              <ProtectedRoute allowedRole="customer">
+                <CustomerDashboard />
+              </ProtectedRoute>
+            } />
+            
+            {/* Protected Admin Routes */}
+            <Route path="/admin" element={
+              <ProtectedRoute allowedRole="admin">
+                <AdminDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/packages" element={
+              <ProtectedRoute allowedRole="admin">
+                <AdminPackages />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/customers" element={
+              <ProtectedRoute allowedRole="admin">
+                <AdminCustomers />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/orders" element={
+              <ProtectedRoute allowedRole="admin">
+                <AdminOrders />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/deliveries" element={
+              <ProtectedRoute allowedRole="admin">
+                <AdminDeliveries />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/reports" element={
+              <ProtectedRoute allowedRole="admin">
+                <AdminReports />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/settings" element={
+              <ProtectedRoute allowedRole="admin">
+                <AdminSettings />
+              </ProtectedRoute>
+            } />
             
             {/* Catch-all */}
             <Route path="*" element={<NotFound />} />

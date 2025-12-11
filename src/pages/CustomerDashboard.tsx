@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,37 +9,17 @@ import {
   Truck,
   Clock,
   ChevronRight,
-  User,
   LogOut,
 } from "lucide-react";
 
 export default function CustomerDashboard() {
-  const { user, role, loading, signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!loading && !user) {
-      navigate("/login");
-    }
-    if (!loading && role === "admin") {
-      navigate("/admin");
-    }
-  }, [user, role, loading, navigate]);
 
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
   };
-
-  if (loading) {
-    return (
-      <Layout>
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      </Layout>
-    );
-  }
 
   const quickActions = [
     { title: "Browse Packages", icon: Package, href: "/categories", desc: "Explore our collection" },

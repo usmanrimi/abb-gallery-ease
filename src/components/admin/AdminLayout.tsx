@@ -1,5 +1,6 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard,
   Package,
@@ -15,6 +16,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import logo from "@/assets/logo.png";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -33,38 +35,43 @@ const navItems = [
 export function AdminLayout({ children }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/login");
+  };
 
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-foreground/50 backdrop-blur-sm lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar - Black with Gold Accents */}
       <aside
         className={cn(
-          "fixed top-0 left-0 z-50 h-full w-64 bg-card border-r transform transition-transform duration-200 lg:translate-x-0",
+          "fixed top-0 left-0 z-50 h-full w-64 bg-sidebar border-r border-sidebar-border transform transition-transform duration-200 lg:translate-x-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="flex h-16 items-center justify-between px-4 border-b">
+        <div className="flex h-16 items-center justify-between px-4 border-b border-sidebar-border">
           <Link to="/admin" className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground font-display font-bold">
-              M
-            </div>
+            <img src={logo} alt="M. Abba Gallery" className="h-10 w-auto" />
             <div className="flex flex-col">
-              <span className="font-display font-semibold leading-tight">M. Abba</span>
-              <span className="text-xs text-muted-foreground leading-tight">Admin</span>
+              <span className="font-display font-semibold leading-tight text-sidebar-foreground">M. Abba</span>
+              <span className="text-xs text-sidebar-foreground/70 leading-tight">Admin Panel</span>
             </div>
           </Link>
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden"
+            className="lg:hidden text-sidebar-foreground hover:bg-sidebar-accent"
             onClick={() => setSidebarOpen(false)}
           >
             <X className="h-5 w-5" />
@@ -82,8 +89,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 className={cn(
                   "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                   isActive
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 )}
               >
                 <item.icon className="h-5 w-5" />
@@ -93,19 +100,21 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           })}
         </nav>
 
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t">
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-sidebar-border">
           <Link to="/">
-            <Button variant="ghost" className="w-full justify-start gap-3">
+            <Button variant="ghost" className="w-full justify-start gap-3 text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground">
               <ChevronLeft className="h-5 w-5" />
               Back to Store
             </Button>
           </Link>
-          <Link to="/login">
-            <Button variant="ghost" className="w-full justify-start gap-3 text-destructive hover:text-destructive">
-              <LogOut className="h-5 w-5" />
-              Logout
-            </Button>
-          </Link>
+          <Button 
+            variant="ghost" 
+            className="w-full justify-start gap-3 text-destructive hover:text-destructive hover:bg-sidebar-accent"
+            onClick={handleSignOut}
+          >
+            <LogOut className="h-5 w-5" />
+            Logout
+          </Button>
         </div>
       </aside>
 
@@ -124,11 +133,11 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           <div className="flex-1" />
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-medium">Admin User</p>
-              <p className="text-xs text-muted-foreground">admin@mabbagallery.com</p>
+              <p className="text-sm font-medium">{user?.user_metadata?.full_name || "Admin"}</p>
+              <p className="text-xs text-muted-foreground">{user?.email}</p>
             </div>
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground font-medium">
-              A
+              {user?.user_metadata?.full_name?.[0]?.toUpperCase() || "A"}
             </div>
           </div>
         </header>
