@@ -5,18 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Mail, Phone, Lock, User, ArrowLeft, Shield, ShoppingBag } from "lucide-react";
+import { Eye, EyeOff, Mail, Phone, Lock, User, ArrowLeft } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { useAuth } from "@/contexts/AuthContext";
-
-type UserRole = "admin" | "customer";
 
 export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [role, setRole] = useState<UserRole>("customer");
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -58,7 +54,7 @@ export default function Register() {
 
     setIsLoading(true);
 
-    const { error } = await signUp(formData.email, formData.password, formData.fullName, role);
+    const { error } = await signUp(formData.email, formData.password, formData.fullName);
 
     if (error) {
       toast({
@@ -72,7 +68,7 @@ export default function Register() {
 
     toast({
       title: "Account created!",
-      description: `Welcome to M. Abba Gallery as ${role === "admin" ? "an Admin" : "a Customer"}.`,
+      description: "Welcome to M. Abba Gallery!",
     });
     setIsLoading(false);
     navigate("/login");
@@ -112,47 +108,6 @@ export default function Register() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Role Selection */}
-                <div className="space-y-3">
-                  <Label>Account Type</Label>
-                  <RadioGroup
-                    value={role}
-                    onValueChange={(value) => setRole(value as UserRole)}
-                    className="grid grid-cols-2 gap-4"
-                  >
-                    <div className="relative">
-                      <RadioGroupItem
-                        value="customer"
-                        id="customer"
-                        className="peer sr-only"
-                      />
-                      <Label
-                        htmlFor="customer"
-                        className="flex flex-col items-center justify-center rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 cursor-pointer transition-all"
-                      >
-                        <ShoppingBag className="mb-2 h-6 w-6 text-primary" />
-                        <span className="font-medium">Customer</span>
-                        <span className="text-xs text-muted-foreground">Shop packages</span>
-                      </Label>
-                    </div>
-                    <div className="relative">
-                      <RadioGroupItem
-                        value="admin"
-                        id="admin"
-                        className="peer sr-only"
-                      />
-                      <Label
-                        htmlFor="admin"
-                        className="flex flex-col items-center justify-center rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 cursor-pointer transition-all"
-                      >
-                        <Shield className="mb-2 h-6 w-6 text-primary" />
-                        <span className="font-medium">Admin</span>
-                        <span className="text-xs text-muted-foreground">Manage store</span>
-                      </Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="fullName">Full Name</Label>
                   <div className="relative">
