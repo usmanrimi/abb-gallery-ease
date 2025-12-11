@@ -1,5 +1,4 @@
-import { useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -7,82 +6,40 @@ import {
   Users,
   ShoppingCart,
   Truck,
-  TrendingUp,
   DollarSign,
-  ArrowUpRight,
-  ArrowDownRight,
 } from "lucide-react";
-import { formatPrice } from "@/data/categories";
 import { AdminLayout } from "@/components/admin/AdminLayout";
-import { useAuth } from "@/contexts/AuthContext";
 
 const stats = [
   {
     title: "Total Revenue",
-    value: formatPrice(2450000),
-    change: "+12.5%",
-    trend: "up",
+    value: "₦0",
     icon: DollarSign,
   },
   {
     title: "Total Orders",
-    value: "156",
-    change: "+8.2%",
-    trend: "up",
+    value: "0",
     icon: ShoppingCart,
   },
   {
     title: "Active Customers",
-    value: "89",
-    change: "+5.1%",
-    trend: "up",
+    value: "0",
     icon: Users,
   },
   {
     title: "Pending Deliveries",
-    value: "23",
-    change: "-3.2%",
-    trend: "down",
+    value: "0",
     icon: Truck,
   },
 ];
 
-const recentOrders = [
-  { id: "ORD-001", customer: "Amina Ibrahim", package: "Sallah VIP", amount: 150000, status: "pending" },
-  { id: "ORD-002", customer: "Fatima Mohammed", package: "Bridal Special", amount: 350000, status: "processing" },
-  { id: "ORD-003", customer: "Aisha Yusuf", package: "Baby Welcome", amount: 80000, status: "delivered" },
-  { id: "ORD-004", customer: "Hadiza Sani", package: "Family Bundle", amount: 200000, status: "processing" },
-];
-
 export default function AdminDashboard() {
-  const { user, role, loading, signOut } = useAuth();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!loading && !user) {
-      navigate("/login");
-    }
-    if (!loading && user && role !== "admin") {
-      navigate("/dashboard");
-    }
-  }, [user, role, loading, navigate]);
-
-  if (loading) {
-    return (
-      <AdminLayout>
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      </AdminLayout>
-    );
-  }
-
   return (
     <AdminLayout>
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold font-display">Dashboard</h1>
-          <p className="text-muted-foreground">Welcome back! Here's your store overview.</p>
+          <p className="text-muted-foreground">Welcome to your admin panel. Here's your store overview.</p>
         </div>
 
         {/* Stats Grid */}
@@ -93,16 +50,6 @@ export default function AdminDashboard() {
                 <div className="flex items-center justify-between">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
                     <stat.icon className="h-5 w-5" />
-                  </div>
-                  <div className={`flex items-center gap-1 text-sm font-medium ${
-                    stat.trend === "up" ? "text-success" : "text-destructive"
-                  }`}>
-                    {stat.change}
-                    {stat.trend === "up" ? (
-                      <ArrowUpRight className="h-4 w-4" />
-                    ) : (
-                      <ArrowDownRight className="h-4 w-4" />
-                    )}
                   </div>
                 </div>
                 <div className="mt-4">
@@ -123,35 +70,10 @@ export default function AdminDashboard() {
             </Link>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {recentOrders.map((order) => (
-                <div
-                  key={order.id}
-                  className="flex items-center justify-between p-4 rounded-lg bg-muted/50"
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-sm text-muted-foreground">
-                        {order.id}
-                      </span>
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                        order.status === "pending"
-                          ? "bg-secondary/50 text-secondary-foreground"
-                          : order.status === "processing"
-                          ? "bg-primary/10 text-primary"
-                          : "bg-success/10 text-success"
-                      }`}>
-                        {order.status}
-                      </span>
-                    </div>
-                    <p className="font-medium mt-1">{order.customer}</p>
-                    <p className="text-sm text-muted-foreground">{order.package}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold">{formatPrice(order.amount)}</p>
-                  </div>
-                </div>
-              ))}
+            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+              <ShoppingCart className="h-12 w-12 mb-4 opacity-50" />
+              <p className="font-medium">No orders yet</p>
+              <p className="text-sm">Orders will appear here once customers place them</p>
             </div>
           </CardContent>
         </Card>
