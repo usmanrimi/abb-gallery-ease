@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+import { useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +14,7 @@ import {
 } from "lucide-react";
 import { formatPrice } from "@/data/categories";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { useAuth } from "@/contexts/AuthContext";
 
 const stats = [
   {
@@ -53,6 +55,28 @@ const recentOrders = [
 ];
 
 export default function AdminDashboard() {
+  const { user, role, loading, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate("/login");
+    }
+    if (!loading && user && role !== "admin") {
+      navigate("/dashboard");
+    }
+  }, [user, role, loading, navigate]);
+
+  if (loading) {
+    return (
+      <AdminLayout>
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </AdminLayout>
+    );
+  }
+
   return (
     <AdminLayout>
       <div className="space-y-6">

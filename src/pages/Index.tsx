@@ -3,7 +3,7 @@ import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { categories } from "@/data/categories";
-import { ArrowRight, Package, Truck, CreditCard, Shield, Star, ChevronRight, Home, Zap } from "lucide-react";
+import { ArrowRight, Package, Truck, CreditCard, Shield, Star, ChevronRight, Home, Store } from "lucide-react";
 import logo from "@/assets/logo.png";
 
 const Index = () => {
@@ -50,14 +50,15 @@ const Index = () => {
                 <div className="relative h-full w-full flex items-center justify-center">
                   <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
                     {categories.slice(0, 4).map((cat, i) => (
-                      <div
+                      <Link
                         key={cat.id}
-                        className="aspect-square rounded-2xl bg-card shadow-elevated p-4 flex flex-col items-center justify-center text-center animate-float"
+                        to={`/categories/${cat.slug}`}
+                        className="aspect-square rounded-2xl bg-card shadow-elevated p-4 flex flex-col items-center justify-center text-center animate-float hover:scale-105 transition-transform cursor-pointer"
                         style={{ animationDelay: `${i * 0.2}s` }}
                       >
                         <Package className="h-8 w-8 text-primary mb-2" />
                         <span className="text-sm font-medium line-clamp-2">{cat.name}</span>
-                      </div>
+                      </Link>
                     ))}
                   </div>
                 </div>
@@ -67,15 +68,16 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Features Section - Quality Packages */}
+      {/* Features Section - Updated with Home Services and Store Shopping */}
       <section className="border-y bg-muted/30">
         <div className="container py-12">
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
             {[
               { icon: Package, title: "Quality Packages", desc: "Curated premium items" },
               { icon: Truck, title: "Fast Delivery", desc: "To your doorstep" },
               { icon: CreditCard, title: "Easy Payments", desc: "Flexible installments" },
-              { icon: Shield, title: "Secure Shopping", desc: "100% protected" },
+              { icon: Home, title: "Home Services", desc: "Free and Past" },
+              { icon: Store, title: "Store Shopping", desc: "Visit our gallery" },
             ].map((feature, i) => (
               <div
                 key={i}
@@ -94,7 +96,6 @@ const Index = () => {
           </div>
         </div>
       </section>
-
 
       {/* Categories Section */}
       <section className="py-16 md:py-24">
