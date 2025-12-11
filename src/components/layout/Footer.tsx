@@ -75,17 +75,17 @@ export function Footer() {
           <div className="space-y-4">
             <h4 className="font-display font-semibold">Contact Us</h4>
             <div className="flex flex-col gap-3">
-              <a href="tel:+2348012345678" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors">
+              <a href="tel:09081818121" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors">
                 <Phone className="h-4 w-4" />
-                +234 801 234 5678
+                09081818121
               </a>
-              <a href="mailto:info@mabbagallery.com" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors">
+              <a href="mailto:abbatrading2017@gmail.com" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors">
                 <Mail className="h-4 w-4" />
-                info@mabbagallery.com
+                abbatrading2017@gmail.com
               </a>
               <div className="flex items-start gap-2 text-sm text-muted-foreground">
                 <MapPin className="h-4 w-4 mt-0.5" />
-                <span>123 Shopping Lane,<br />Lagos, Nigeria</span>
+                <span>Kabuga, Kano State, Nigeria</span>
               </div>
             </div>
           </div>
