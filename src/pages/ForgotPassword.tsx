@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Mail, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -18,14 +19,26 @@ export default function ForgotPassword() {
     e.preventDefault();
     setIsLoading(true);
 
-    setTimeout(() => {
-      setIsLoading(false);
-      setIsSubmitted(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+
+    if (error) {
       toast({
-        title: "Reset link sent!",
-        description: "Check your email for password reset instructions.",
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
       });
-    }, 1500);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(false);
+    setIsSubmitted(true);
+    toast({
+      title: "Reset link sent!",
+      description: "Check your email for password reset instructions.",
+    });
   };
 
   if (isSubmitted) {
