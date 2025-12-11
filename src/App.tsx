@@ -9,7 +9,6 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import RegisterAdmin from "./pages/RegisterAdmin";
 import ForgotPassword from "./pages/ForgotPassword";
 import Categories from "./pages/Categories";
 import CategoryDetail from "./pages/CategoryDetail";
@@ -43,7 +42,6 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/register/admin" element={<RegisterAdmin />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/categories" element={<Categories />} />
             <Route path="/categories/:slug" element={<CategoryDetail />} />
