@@ -56,22 +56,20 @@ export default function CategoryDetail() {
                 className="overflow-hidden h-full animate-slide-up"
                 style={{ animationDelay: `${i * 0.1}s` }}
               >
-                <div className="aspect-[4/3] bg-gradient-to-br from-primary/10 to-accent/10 relative overflow-hidden">
+                <div className="aspect-[4/3] bg-gradient-to-br from-primary/10 to-accent/10 relative overflow-hidden flex items-center justify-center">
                   {pkg.image && pkg.image !== "/placeholder.svg" ? (
                     <img
                       src={pkg.image}
                       alt={pkg.name}
-                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300"
                     />
                   ) : (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Package className="h-16 w-16 text-primary/30" />
-                    </div>
+                    <Package className="h-16 w-16 text-primary/30" />
                   )}
                   {pkg.hasClasses && pkg.classes && (
                     <div className="absolute top-3 right-3">
                       <span className="inline-flex items-center rounded-full bg-accent text-accent-foreground px-3 py-1 text-xs font-medium">
-                        {pkg.classes.length} options
+                        {pkg.classes.length} classes
                       </span>
                     </div>
                   )}
@@ -83,18 +81,18 @@ export default function CategoryDetail() {
                   </p>
                   <div className="flex items-center justify-between">
                     <div>
-                      {pkg.hasClasses && pkg.classes ? (
+                      {pkg.startingPrice ? (
                         <span className="text-sm text-muted-foreground">
                           Starting from{" "}
                           <span className="text-lg font-semibold text-foreground">
-                            {formatPrice(pkg.classes[pkg.classes.length - 1]?.startingPrice || 0)}
+                            {formatPrice(pkg.startingPrice)}
                           </span>
                         </span>
-                      ) : (
+                      ) : pkg.basePrice ? (
                         <span className="text-lg font-semibold">
-                          {formatPrice(pkg.basePrice || 0)}
+                          {formatPrice(pkg.basePrice)}
                         </span>
-                      )}
+                      ) : null}
                     </div>
                     <div className="flex items-center gap-1 text-primary text-sm font-medium">
                       View
