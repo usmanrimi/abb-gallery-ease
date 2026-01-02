@@ -56,12 +56,12 @@ export default function CategoryDetail() {
                 className="overflow-hidden h-full animate-slide-up"
                 style={{ animationDelay: `${i * 0.1}s` }}
               >
-                <div className="aspect-[4/3] bg-gradient-to-br from-primary/10 to-accent/10 relative overflow-hidden flex items-center justify-center">
+                <div className="aspect-[4/3] bg-muted/30 relative overflow-hidden flex items-center justify-center p-4">
                   {pkg.image && pkg.image !== "/placeholder.svg" ? (
                     <img
                       src={pkg.image}
                       alt={pkg.name}
-                      className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                      className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
                     />
                   ) : (
                     <Package className="h-16 w-16 text-primary/30" />
