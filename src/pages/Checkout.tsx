@@ -53,8 +53,9 @@ export default function Checkout() {
     );
   }
 
-  const { package: pkg, selectedClass, quantity, notes, totalPrice } = orderData;
+  const { package: pkg, selectedClass, quantity, notes, unitPrice } = orderData;
   
+  const totalPrice = unitPrice * quantity;
   const selectedPlan = discountPlans.find((p) => p.id === paymentPlan);
   const discountAmount = selectedPlan ? totalPrice * selectedPlan.discount : 0;
   const finalPrice = totalPrice - discountAmount;
@@ -112,6 +113,7 @@ export default function Checkout() {
       navigate("/order-confirmation", {
         state: {
           ...orderData,
+          totalPrice,
           paymentMethod: paymentPlan,
           discountAmount,
           deliveryDate,
@@ -143,7 +145,7 @@ export default function Checkout() {
           <span className="text-foreground">Checkout</span>
         </nav>
 
-        <h1 className="text-3xl font-bold font-display mb-8">Checkout</h1>
+        <h1 className="text-3xl font-bold font-display mb-8">Calculate Your Cost</h1>
 
         <div className="grid gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
@@ -161,7 +163,7 @@ export default function Checkout() {
                     <h3 className="font-semibold">{pkg.name}</h3>
                     {selectedClass && (
                       <p className="text-sm text-muted-foreground">
-                        Class: {selectedClass.name} ({selectedClass.priceRange})
+                        Class: {selectedClass.name} - {formatPrice(selectedClass.price)}
                       </p>
                     )}
                     <p className="text-sm text-muted-foreground">
@@ -172,9 +174,6 @@ export default function Checkout() {
                         Notes: {notes}
                       </p>
                     )}
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-lg">{formatPrice(totalPrice)}</p>
                   </div>
                 </div>
               </CardContent>
@@ -241,7 +240,7 @@ export default function Checkout() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <CreditCard className="h-5 w-5 text-primary" />
-                  Payment Method
+                  Payment Method (Choose for Discount)
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -336,11 +335,11 @@ export default function Checkout() {
           <div className="lg:col-span-1">
             <Card className="sticky top-24">
               <CardHeader>
-                <CardTitle>Order Total</CardTitle>
+                <CardTitle>Your Cost</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal</span>
+                  <span className="text-muted-foreground">Subtotal ({quantity}x)</span>
                   <span>{formatPrice(totalPrice)}</span>
                 </div>
                 {discountAmount > 0 && (
@@ -355,7 +354,7 @@ export default function Checkout() {
                 </div>
                 <div className="border-t pt-4">
                   <div className="flex justify-between">
-                    <span className="font-semibold">Total</span>
+                    <span className="font-semibold">Final Cost</span>
                     <span className="text-2xl font-bold text-primary">
                       {formatPrice(finalPrice)}
                     </span>
@@ -373,7 +372,7 @@ export default function Checkout() {
                   onClick={handleSubmit}
                   disabled={isSubmitting || !isFormValid}
                 >
-                  {isSubmitting ? "Submitting..." : "Submit Order"}
+                  {isSubmitting ? "Submitting..." : "Calculate My Cost"}
                 </Button>
 
                 <p className="text-xs text-center text-muted-foreground">

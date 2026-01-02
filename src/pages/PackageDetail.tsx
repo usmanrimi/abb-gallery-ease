@@ -4,11 +4,10 @@ import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { getPackageById, getCategoryBySlug, categories, formatPrice } from "@/data/categories";
-import { Package, ChevronRight, Minus, Plus, ShoppingBag, Check } from "lucide-react";
+import { Package, ChevronRight, Minus, Plus, Calculator, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function PackageDetail() {
@@ -37,19 +36,16 @@ export default function PackageDetail() {
   }
 
   const selectedClassData = pkg.classes?.find((c) => c.id === selectedClass);
-  // Use basePrice or estimate from priceRange for calculation purposes
-  const unitPrice = pkg.basePrice || 50000; // Base estimate, actual price will be calculated by admin
-  const totalPrice = unitPrice * quantity;
+  const unitPrice = selectedClassData?.price || pkg.basePrice || pkg.startingPrice || 0;
 
-  const handleAddToCart = () => {
-    // In a real app, this would add to cart state/context
+  const handleCalculateCost = () => {
     navigate("/checkout", {
       state: {
         package: pkg,
         selectedClass: selectedClassData,
         quantity,
         notes,
-        totalPrice,
+        unitPrice,
       },
     });
   };
@@ -71,19 +67,17 @@ export default function PackageDetail() {
         </nav>
 
         <div className="grid gap-8 lg:grid-cols-2">
-          {/* Product Image */}
+          {/* Product Image - maintain aspect ratio with contain */}
           <div className="animate-fade-in">
-            <div className="aspect-square rounded-2xl bg-gradient-to-br from-primary/10 to-accent/10 relative overflow-hidden">
+            <div className="aspect-square rounded-2xl bg-gradient-to-br from-primary/10 to-accent/10 relative overflow-hidden flex items-center justify-center">
               {pkg.image && pkg.image !== "/placeholder.svg" ? (
                 <img
                   src={pkg.image}
                   alt={pkg.name}
-                  className="absolute inset-0 w-full h-full object-cover"
+                  className="max-w-full max-h-full object-contain"
                 />
               ) : (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Package className="h-32 w-32 text-primary/30" />
-                </div>
+                <Package className="h-32 w-32 text-primary/30" />
               )}
             </div>
           </div>
@@ -98,20 +92,26 @@ export default function PackageDetail() {
               {pkg.name}
             </h1>
             
-            <p className="text-muted-foreground text-lg mb-6">
+            <p className="text-muted-foreground text-lg mb-2">
               {pkg.description}
             </p>
 
+            {pkg.startingPrice && (
+              <p className="text-xl font-semibold text-primary mb-6">
+                Starting from {formatPrice(pkg.startingPrice)}
+              </p>
+            )}
+
             <Card className="mb-6">
               <CardContent className="p-6 space-y-6">
-                {/* Class Selection */}
+                {/* Class Selection with images */}
                 {pkg.hasClasses && pkg.classes && (
                   <div className="space-y-3">
                     <Label className="text-base font-semibold">Select Class</Label>
                     <RadioGroup
                       value={selectedClass}
                       onValueChange={setSelectedClass}
-                      className="grid gap-3 sm:grid-cols-2"
+                      className="grid gap-3"
                     >
                       {pkg.classes.map((cls) => (
                         <Label
@@ -129,11 +129,23 @@ export default function PackageDetail() {
                             id={cls.id}
                             className="mt-0.5"
                           />
+                          {/* Class image placeholder area */}
+                          <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+                            {cls.image ? (
+                              <img
+                                src={cls.image}
+                                alt={cls.name}
+                                className="w-full h-full object-contain"
+                              />
+                            ) : (
+                              <Package className="h-6 w-6 text-muted-foreground" />
+                            )}
+                          </div>
                           <div className="flex-1">
-                            <div className="flex items-center justify-between">
+                            <div className="flex items-center justify-between flex-wrap gap-2">
                               <span className="font-semibold">{cls.name}</span>
-                              <span className="font-bold text-primary text-sm">
-                                Starting from {formatPrice(cls.startingPrice)}
+                              <span className="font-bold text-primary">
+                                {formatPrice(cls.price)}
                               </span>
                             </div>
                             <p className="text-sm text-muted-foreground mt-1">
@@ -168,9 +180,6 @@ export default function PackageDetail() {
                         <Plus className="h-4 w-4" />
                       </Button>
                     </div>
-                    <span className="text-muted-foreground">
-                      × {formatPrice(unitPrice)}
-                    </span>
                   </div>
                 </div>
 
@@ -190,19 +199,15 @@ export default function PackageDetail() {
               </CardContent>
             </Card>
 
-            {/* Price & Actions */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-6 rounded-xl bg-muted/50">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Price</p>
-                <p className="text-3xl font-bold text-primary">{formatPrice(totalPrice)}</p>
-              </div>
+            {/* Actions - No Total Price display */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 p-6 rounded-xl bg-muted/50">
               <Button
                 size="xl"
                 className="w-full sm:w-auto"
-                onClick={handleAddToCart}
+                onClick={handleCalculateCost}
               >
-                <ShoppingBag className="h-5 w-5 mr-2" />
-                Proceed Order
+                <Calculator className="h-5 w-5 mr-2" />
+                Calculate My Cost
               </Button>
             </div>
 
