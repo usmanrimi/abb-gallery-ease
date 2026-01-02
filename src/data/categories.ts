@@ -3,7 +3,11 @@ import hajiyaBabbaImg from "@/assets/packages/hajiya-babba.jpg";
 import manyanYaraImg from "@/assets/packages/manyan-yara.jpg";
 import babbanYayaImg from "@/assets/packages/babban-yaya.png";
 import grandmaImg from "@/assets/packages/grandma.png";
-
+import babbarYarinyaImg from "@/assets/packages/babbar-yarinya.png";
+import babbarYayaImg from "@/assets/packages/babbar-yaya.png";
+import hadimaiImg from "@/assets/packages/hadimai.png";
+import yaMalamImg from "@/assets/packages/ya-malam.png";
+import yarLeleImg from "@/assets/packages/yar-lele.png";
 export interface Category {
   id: string;
   name: string;
@@ -140,7 +144,7 @@ export const packages: Package[] = [
     categoryId: "1",
     name: "Yar Lele Package",
     description: "Package for young girls",
-    image: "/placeholder.svg",
+    image: yarLeleImg,
     hasClasses: true,
     startingPrice: 200000,
     classes: [
@@ -154,7 +158,7 @@ export const packages: Package[] = [
     categoryId: "1",
     name: "Ya Malam Package",
     description: "Special package for religious leaders",
-    image: "/placeholder.svg",
+    image: yaMalamImg,
     hasClasses: true,
     startingPrice: 100000,
     classes: [
@@ -168,7 +172,7 @@ export const packages: Package[] = [
     categoryId: "1",
     name: "Hadimai Package",
     description: "Package for helpers",
-    image: "/placeholder.svg",
+    image: hadimaiImg,
     hasClasses: true,
     startingPrice: 50000,
     classes: [
@@ -182,7 +186,7 @@ export const packages: Package[] = [
     categoryId: "1",
     name: "Babbar Yaya Package",
     description: "Package for the eldest sister",
-    image: "/placeholder.svg",
+    image: babbarYayaImg,
     hasClasses: true,
     startingPrice: 200000,
     classes: [
@@ -210,7 +214,7 @@ export const packages: Package[] = [
     categoryId: "1",
     name: "Babbar Yarinya Package",
     description: "Package for the eldest daughter",
-    image: "/placeholder.svg",
+    image: babbarYarinyaImg,
     hasClasses: true,
     startingPrice: 100000,
     classes: [

@@ -67,14 +67,14 @@ export default function PackageDetail() {
         </nav>
 
         <div className="grid gap-8 lg:grid-cols-2">
-          {/* Product Image - maintain aspect ratio with contain */}
+          {/* Product Image - maintain aspect ratio with contain, never crop */}
           <div className="animate-fade-in">
-            <div className="aspect-square rounded-2xl bg-gradient-to-br from-primary/10 to-accent/10 relative overflow-hidden flex items-center justify-center">
+            <div className="min-h-[300px] max-h-[600px] rounded-2xl bg-muted/30 relative overflow-hidden flex items-center justify-center p-6">
               {pkg.image && pkg.image !== "/placeholder.svg" ? (
                 <img
                   src={pkg.image}
                   alt={pkg.name}
-                  className="max-w-full max-h-full object-contain"
+                  className="w-full h-full object-contain"
                 />
               ) : (
                 <Package className="h-32 w-32 text-primary/30" />
