@@ -4,10 +4,12 @@ import { ShoppingBag, User, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/logo.png";
+import { useCart } from "@/contexts/CartContext";
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
+  const { getItemCount } = useCart();
 
   const navLinks = [
     { href: "/", label: "Home" },
@@ -50,9 +52,11 @@ export function Header() {
           <Link to="/cart" className="hidden sm:flex">
             <Button variant="ghost" size="icon" className="relative">
               <ShoppingBag className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-semibold">
-                0
-              </span>
+              {getItemCount() > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-semibold">
+                  {getItemCount()}
+                </span>
+              )}
             </Button>
           </Link>
           <Link to="/login" className="hidden sm:flex">
@@ -99,7 +103,7 @@ export function Header() {
               <Link to="/cart" className="flex-1" onClick={() => setIsMenuOpen(false)}>
                 <Button variant="outline" className="w-full">
                   <ShoppingBag className="h-4 w-4 mr-2" />
-                  Cart
+                  Cart {getItemCount() > 0 && `(${getItemCount()})`}
                 </Button>
               </Link>
               <Link to="/login" className="flex-1" onClick={() => setIsMenuOpen(false)}>

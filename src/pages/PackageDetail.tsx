@@ -7,12 +7,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { getPackageById, getCategoryBySlug, categories, formatPrice } from "@/data/categories";
-import { Package, ChevronRight, Minus, Plus, Calculator, Check } from "lucide-react";
+import { Package, ChevronRight, Minus, Plus, Calculator, Check, ShoppingCart } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useCart } from "@/contexts/CartContext";
+import { toast } from "sonner";
 
 export default function PackageDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { addToCart } = useCart();
   const pkg = getPackageById(id || "");
   const category = pkg ? categories.find((c) => c.id === pkg.categoryId) : null;
 
@@ -36,7 +39,9 @@ export default function PackageDetail() {
   }
 
   const selectedClassData = pkg.classes?.find((c) => c.id === selectedClass);
-  const unitPrice = selectedClassData?.price || pkg.basePrice || pkg.startingPrice || 0;
+  const unitPrice = pkg.hasClasses 
+    ? (selectedClassData?.price || pkg.startingPrice || 0)
+    : (pkg.basePrice || 0);
 
   const handleCalculateCost = () => {
     navigate("/checkout", {
@@ -48,6 +53,17 @@ export default function PackageDetail() {
         unitPrice,
       },
     });
+  };
+
+  const handleAddToCart = () => {
+    addToCart({
+      package: pkg,
+      selectedClass: pkg.hasClasses ? selectedClassData : undefined,
+      quantity,
+      notes,
+      unitPrice,
+    });
+    toast.success(`${pkg.name} added to cart!`);
   };
 
   // Determine which image to show in the class section - use classImage if available
@@ -103,15 +119,20 @@ export default function PackageDetail() {
               {pkg.description}
             </p>
 
-            {pkg.startingPrice && (
+            {/* Show price based on package type */}
+            {pkg.hasClasses && pkg.startingPrice ? (
               <p className="text-xl font-semibold text-primary mb-6">
                 Starting from {formatPrice(pkg.startingPrice)}
               </p>
-            )}
+            ) : pkg.basePrice ? (
+              <p className="text-xl font-semibold text-primary mb-6">
+                {formatPrice(pkg.basePrice)}
+              </p>
+            ) : null}
 
             <Card className="mb-6">
               <CardContent className="p-6 space-y-6">
-                {/* Class Selection */}
+                {/* Class Selection - Only for packages with classes */}
                 {pkg.hasClasses && pkg.classes && (
                   <div className="space-y-3">
                     <Label className="text-base font-semibold">Select Class</Label>
@@ -150,6 +171,14 @@ export default function PackageDetail() {
                         </Label>
                       ))}
                     </RadioGroup>
+                  </div>
+                )}
+
+                {/* Fixed Price Display for non-class packages */}
+                {!pkg.hasClasses && pkg.basePrice && (
+                  <div className="text-center p-4 rounded-xl bg-primary/5 border-2 border-primary">
+                    <p className="text-sm text-muted-foreground mb-1">Fixed Price</p>
+                    <p className="text-2xl font-bold text-primary">{formatPrice(pkg.basePrice)}</p>
                   </div>
                 )}
 
@@ -194,10 +223,19 @@ export default function PackageDetail() {
               </CardContent>
             </Card>
 
-            {/* Actions - No Total Price display */}
+            {/* Actions */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 p-6 rounded-xl bg-muted/50">
               <Button
-                size="xl"
+                variant="outline"
+                size="lg"
+                className="w-full sm:w-auto"
+                onClick={handleAddToCart}
+              >
+                <ShoppingCart className="h-5 w-5 mr-2" />
+                Add to Cart
+              </Button>
+              <Button
+                size="lg"
                 className="w-full sm:w-auto"
                 onClick={handleCalculateCost}
               >
