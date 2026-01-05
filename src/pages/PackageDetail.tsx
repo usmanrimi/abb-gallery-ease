@@ -50,6 +50,9 @@ export default function PackageDetail() {
     });
   };
 
+  // Determine which image to show in the class section - use classImage if available
+  const classDisplayImage = pkg.classImage || pkg.image;
+
   return (
     <Layout>
       <div className="container py-8 md:py-12">
@@ -67,17 +70,21 @@ export default function PackageDetail() {
         </nav>
 
         <div className="grid gap-8 lg:grid-cols-2">
-          {/* Product Image - maintain aspect ratio with contain, never crop */}
+          {/* Class Section Image - This is the image shown on package detail page */}
           <div className="animate-fade-in">
-            <div className="min-h-[300px] max-h-[600px] rounded-2xl bg-muted/30 relative overflow-hidden flex items-center justify-center p-6">
-              {pkg.image && pkg.image !== "/placeholder.svg" ? (
+            {/* Image container - flexible height, maintains aspect ratio, never crops */}
+            <div className="w-full rounded-2xl bg-muted/30 relative overflow-hidden flex items-center justify-center p-4">
+              {classDisplayImage && classDisplayImage !== "/placeholder.svg" ? (
                 <img
-                  src={pkg.image}
+                  src={classDisplayImage}
                   alt={pkg.name}
-                  className="w-full h-full object-contain"
+                  className="max-w-full h-auto object-contain rounded-lg"
+                  style={{ maxHeight: "80vh" }}
                 />
               ) : (
-                <Package className="h-32 w-32 text-primary/30" />
+                <div className="aspect-square w-full flex items-center justify-center">
+                  <Package className="h-32 w-32 text-primary/30" />
+                </div>
               )}
             </div>
           </div>
@@ -104,7 +111,7 @@ export default function PackageDetail() {
 
             <Card className="mb-6">
               <CardContent className="p-6 space-y-6">
-                {/* Class Selection with images */}
+                {/* Class Selection */}
                 {pkg.hasClasses && pkg.classes && (
                   <div className="space-y-3">
                     <Label className="text-base font-semibold">Select Class</Label>
@@ -129,18 +136,6 @@ export default function PackageDetail() {
                             id={cls.id}
                             className="mt-0.5"
                           />
-                          {/* Class image placeholder area */}
-                          <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center shrink-0 overflow-hidden">
-                            {cls.image ? (
-                              <img
-                                src={cls.image}
-                                alt={cls.name}
-                                className="w-full h-full object-contain"
-                              />
-                            ) : (
-                              <Package className="h-6 w-6 text-muted-foreground" />
-                            )}
-                          </div>
                           <div className="flex-1">
                             <div className="flex items-center justify-between flex-wrap gap-2">
                               <span className="font-semibold">{cls.name}</span>

@@ -8,6 +8,19 @@ import babbarYayaImg from "@/assets/packages/babbar-yaya.png";
 import hadimaiImg from "@/assets/packages/hadimai.png";
 import yaMalamImg from "@/assets/packages/ya-malam.png";
 import yarLeleImg from "@/assets/packages/yar-lele.png";
+
+// Class section images (displayed on package detail page)
+import alhajiBabbaClassImg from "@/assets/packages/class/alhaji-babba-class.png";
+import babbanYayaClassImg from "@/assets/packages/class/babban-yaya-class.png";
+import hajiyaBabbaClassImg from "@/assets/packages/class/hajiya-babba-class.png";
+import grandmaClassImg from "@/assets/packages/class/grandma-class.png";
+import yarLeleClassImg from "@/assets/packages/class/yar-lele-class.png";
+import yaMalamClassImg from "@/assets/packages/class/ya-malam-class.png";
+import hadimaiClassImg from "@/assets/packages/class/hadimai-class.png";
+import babbarYayaClassImg from "@/assets/packages/class/babbar-yaya-class.png";
+import danLeleClassImg from "@/assets/packages/class/dan-lele-class.png";
+import babbarYarinyaClassImg from "@/assets/packages/class/babbar-yarinya-class.png";
+
 export interface Category {
   id: string;
   name: string;
@@ -21,7 +34,8 @@ export interface Package {
   categoryId: string;
   name: string;
   description: string;
-  image: string;
+  image: string; // Card image (shown on grid)
+  classImage?: string; // Class section image (shown on detail page)
   hasClasses: boolean;
   classes?: PackageClass[];
   basePrice?: number;
@@ -75,6 +89,7 @@ export const packages: Package[] = [
     name: "Alhaji Babba Package",
     description: "Premium package for the head of the family",
     image: alhajiBabbaImg,
+    classImage: alhajiBabbaClassImg,
     hasClasses: true,
     startingPrice: 500000,
     classes: [
@@ -89,6 +104,7 @@ export const packages: Package[] = [
     name: "Hajiya Babba Package",
     description: "Premium package for the matriarch",
     image: hajiyaBabbaImg,
+    classImage: hajiyaBabbaClassImg,
     hasClasses: true,
     startingPrice: 500000,
     classes: [
@@ -117,6 +133,7 @@ export const packages: Package[] = [
     name: "Babban Yaya Package",
     description: "Package for the eldest sibling (male)",
     image: babbanYayaImg,
+    classImage: babbanYayaClassImg,
     hasClasses: true,
     startingPrice: 200000,
     classes: [
@@ -131,6 +148,7 @@ export const packages: Package[] = [
     name: "Grandma Package",
     description: "Special package for grandmother",
     image: grandmaImg,
+    classImage: grandmaClassImg,
     hasClasses: true,
     startingPrice: 100000,
     classes: [
@@ -145,6 +163,7 @@ export const packages: Package[] = [
     name: "Yar Lele Package",
     description: "Package for young girls",
     image: yarLeleImg,
+    classImage: yarLeleClassImg,
     hasClasses: true,
     startingPrice: 200000,
     classes: [
@@ -159,6 +178,7 @@ export const packages: Package[] = [
     name: "Ya Malam Package",
     description: "Special package for religious leaders",
     image: yaMalamImg,
+    classImage: yaMalamClassImg,
     hasClasses: true,
     startingPrice: 100000,
     classes: [
@@ -173,6 +193,7 @@ export const packages: Package[] = [
     name: "Hadimai Package",
     description: "Package for helpers",
     image: hadimaiImg,
+    classImage: hadimaiClassImg,
     hasClasses: true,
     startingPrice: 50000,
     classes: [
@@ -187,6 +208,7 @@ export const packages: Package[] = [
     name: "Babbar Yaya Package",
     description: "Package for the eldest sister",
     image: babbarYayaImg,
+    classImage: babbarYayaClassImg,
     hasClasses: true,
     startingPrice: 200000,
     classes: [
@@ -201,6 +223,7 @@ export const packages: Package[] = [
     name: "Dan Lele Package",
     description: "Package for young boys",
     image: "/placeholder.svg",
+    classImage: danLeleClassImg,
     hasClasses: true,
     startingPrice: 150000,
     classes: [
@@ -215,6 +238,7 @@ export const packages: Package[] = [
     name: "Babbar Yarinya Package",
     description: "Package for the eldest daughter",
     image: babbarYarinyaImg,
+    classImage: babbarYarinyaClassImg,
     hasClasses: true,
     startingPrice: 100000,
     classes: [
@@ -351,9 +375,8 @@ export function getPackageById(id: string): Package | undefined {
 }
 
 export function formatPrice(price: number): string {
-  return new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency: "NGN",
+  return "₦" + new Intl.NumberFormat("en-NG", {
     minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(price);
 }
