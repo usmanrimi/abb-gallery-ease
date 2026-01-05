@@ -248,34 +248,33 @@ export const packages: Package[] = [
     ],
   },
 
-  // Kayan Lefe Packages
+  // Kayan Lefe Packages - Fixed prices, NO classes
   {
     id: "kl-1",
     categoryId: "2",
-    name: "Amarya mai capacity",
+    name: "Amarya Mai Capacity",
     description: "Complete bridal package with everything needed",
     image: "/placeholder.svg",
-    hasClasses: true,
-    startingPrice: 150000,
-    classes: [
-      { id: "vip", name: "VIP", price: 500000, description: "Ultimate luxury bridal package" },
-      { id: "special", name: "SPECIAL", price: 300000, description: "Premium bridal collection" },
-      { id: "standard", name: "STANDARD", price: 150000, description: "Beautiful bridal essentials" },
-    ],
+    hasClasses: false,
+    basePrice: 1500000,
   },
   {
     id: "kl-2",
     categoryId: "2",
-    name: "Daga ke ba kari",
-    description: "Essential bridal starter package",
+    name: "First Lady",
+    description: "Premium luxury bridal package for the sophisticated bride",
     image: "/placeholder.svg",
-    hasClasses: true,
-    startingPrice: 100000,
-    classes: [
-      { id: "vip", name: "VIP", price: 400000, description: "Luxury starter package" },
-      { id: "special", name: "SPECIAL", price: 200000, description: "Premium starter collection" },
-      { id: "standard", name: "STANDARD", price: 100000, description: "Essential starter items" },
-    ],
+    hasClasses: false,
+    basePrice: 2500000,
+  },
+  {
+    id: "kl-3",
+    categoryId: "2",
+    name: "Daga Ke Ba Kari",
+    description: "The ultimate custom bridal experience",
+    image: "/placeholder.svg",
+    hasClasses: false,
+    basePrice: 5000000,
   },
 
   // Haihuwa Packages
