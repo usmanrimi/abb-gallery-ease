@@ -7,11 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { formatPrice } from "@/data/categories";
-import { ChevronRight, CreditCard, Calendar, Truck, CheckCircle2, User, Mail, Phone, Percent } from "lucide-react";
+import { ChevronRight, CreditCard, Calendar, Truck, CheckCircle2, User, Mail, Phone, Percent, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useCart, CartItem } from "@/contexts/CartContext";
 
 // Discount-based payment plans
 const discountPlans = [
@@ -26,7 +27,8 @@ export default function Checkout() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
-  const orderData = location.state as any;
+  const { clearCart } = useCart();
+  const orderData = location.state as { cartItems?: CartItem[]; totalAmount?: number } | null;
 
   const [paymentPlan, setPaymentPlan] = useState("one-time");
   const [deliveryDate, setDeliveryDate] = useState("");
@@ -40,11 +42,17 @@ export default function Checkout() {
     whatsappNumber: "",
   });
 
-  if (!orderData) {
+  // Check if we have valid cart items
+  const cartItems = orderData?.cartItems || [];
+  const hasItems = cartItems.length > 0;
+
+  if (!hasItems) {
     return (
       <Layout>
         <div className="container py-16 text-center">
+          <ShoppingBag className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
           <h1 className="text-2xl font-bold mb-4">No items in checkout</h1>
+          <p className="text-muted-foreground mb-6">Add some packages to your cart first</p>
           <Link to="/categories">
             <Button>Browse Packages</Button>
           </Link>
@@ -53,9 +61,7 @@ export default function Checkout() {
     );
   }
 
-  const { package: pkg, selectedClass, quantity, notes, unitPrice } = orderData;
-  
-  const totalPrice = unitPrice * quantity;
+  const totalPrice = cartItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
   const selectedPlan = discountPlans.find((p) => p.id === paymentPlan);
   const discountAmount = selectedPlan ? totalPrice * selectedPlan.discount : 0;
   const finalPrice = totalPrice - discountAmount;
@@ -89,30 +95,41 @@ export default function Checkout() {
     setIsSubmitting(true);
     
     try {
-      const { error } = await supabase.from("orders").insert({
-        user_id: user.id,
-        package_name: pkg.name,
-        package_class: selectedClass?.name || null,
-        quantity,
-        notes: notes || null,
-        total_price: totalPrice,
-        final_price: finalPrice,
-        discount_amount: discountAmount,
-        payment_method: paymentPlan,
-        installment_plan: paymentPlan !== "one-time" ? paymentPlan : null,
-        delivery_date: deliveryDate || null,
-        delivery_time: deliveryTime || null,
-        customer_name: customerInfo.fullName,
-        customer_email: customerInfo.email,
-        customer_whatsapp: customerInfo.whatsappNumber,
-        status: "pending",
-      });
+      // Create an order for each cart item
+      const orderPromises = cartItems.map((item) =>
+        supabase.from("orders").insert({
+          user_id: user.id,
+          package_name: item.package.name,
+          package_class: item.selectedClass?.name || null,
+          quantity: item.quantity,
+          notes: item.notes || null,
+          total_price: item.unitPrice * item.quantity,
+          final_price: (item.unitPrice * item.quantity) - ((item.unitPrice * item.quantity) * (selectedPlan?.discount || 0)),
+          discount_amount: (item.unitPrice * item.quantity) * (selectedPlan?.discount || 0),
+          payment_method: paymentPlan,
+          installment_plan: paymentPlan !== "one-time" ? paymentPlan : null,
+          delivery_date: deliveryDate || null,
+          delivery_time: deliveryTime || null,
+          customer_name: customerInfo.fullName,
+          customer_email: customerInfo.email,
+          customer_whatsapp: customerInfo.whatsappNumber,
+          status: "pending",
+        })
+      );
 
-      if (error) throw error;
+      const results = await Promise.all(orderPromises);
+      const hasError = results.some((result) => result.error);
+
+      if (hasError) {
+        throw new Error("Failed to submit one or more orders");
+      }
+
+      // Clear cart after successful order
+      clearCart();
 
       navigate("/order-confirmation", {
         state: {
-          ...orderData,
+          cartItems,
           totalPrice,
           paymentMethod: paymentPlan,
           discountAmount,
@@ -140,7 +157,7 @@ export default function Checkout() {
         <nav className="mb-6 text-sm text-muted-foreground flex items-center gap-2 flex-wrap">
           <Link to="/" className="hover:text-primary">Home</Link>
           <ChevronRight className="h-3 w-3" />
-          <Link to="/categories" className="hover:text-primary">Categories</Link>
+          <Link to="/cart" className="hover:text-primary">Cart</Link>
           <ChevronRight className="h-3 w-3" />
           <span className="text-foreground">Checkout</span>
         </nav>
@@ -154,28 +171,47 @@ export default function Checkout() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <CheckCircle2 className="h-5 w-5 text-primary" />
-                  Order Summary
+                  Order Summary ({cartItems.length} {cartItems.length === 1 ? 'item' : 'items'})
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="flex items-start gap-4 p-4 rounded-xl bg-muted/50">
-                  <div className="flex-1">
-                    <h3 className="font-semibold">{pkg.name}</h3>
-                    {selectedClass && (
+              <CardContent className="space-y-3">
+                {cartItems.map((item) => (
+                  <div key={item.id} className="flex items-start gap-4 p-4 rounded-xl bg-muted/50">
+                    {/* Item Image */}
+                    <div className="w-16 h-16 flex-shrink-0 rounded-lg bg-background overflow-hidden flex items-center justify-center">
+                      {item.package.image && item.package.image !== "/placeholder.svg" ? (
+                        <img
+                          src={item.package.image}
+                          alt={item.package.name}
+                          className="w-full h-full object-contain p-1"
+                        />
+                      ) : (
+                        <ShoppingBag className="h-6 w-6 text-muted-foreground/50" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold">{item.package.name}</h3>
+                      {item.selectedClass && (
+                        <p className="text-sm text-muted-foreground">
+                          Class: {item.selectedClass.name} - {formatPrice(item.selectedClass.price)}
+                        </p>
+                      )}
                       <p className="text-sm text-muted-foreground">
-                        Class: {selectedClass.name} - {formatPrice(selectedClass.price)}
+                        Quantity: {item.quantity}
                       </p>
-                    )}
-                    <p className="text-sm text-muted-foreground">
-                      Quantity: {quantity}
-                    </p>
-                    {notes && (
-                      <p className="text-sm text-muted-foreground mt-2">
-                        Notes: {notes}
+                      {item.notes && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Notes: {item.notes}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-primary">
+                        {formatPrice(item.unitPrice * item.quantity)}
                       </p>
-                    )}
+                    </div>
                   </div>
-                </div>
+                ))}
               </CardContent>
             </Card>
 
@@ -339,7 +375,7 @@ export default function Checkout() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal ({quantity}x)</span>
+                  <span className="text-muted-foreground">Subtotal ({cartItems.length} items)</span>
                   <span>{formatPrice(totalPrice)}</span>
                 </div>
                 {discountAmount > 0 && (
@@ -372,7 +408,7 @@ export default function Checkout() {
                   onClick={handleSubmit}
                   disabled={isSubmitting || !isFormValid}
                 >
-                  {isSubmitting ? "Submitting..." : "Calculate My Cost"}
+                  {isSubmitting ? "Submitting..." : "Submit Order"}
                 </Button>
 
                 <p className="text-xs text-center text-muted-foreground">
