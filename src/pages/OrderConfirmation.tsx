@@ -4,12 +4,23 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatPrice } from "@/data/categories";
 import { CheckCircle2, Package, Clock, ArrowRight } from "lucide-react";
+import { CartItem } from "@/contexts/CartContext";
+
+interface OrderConfirmationData {
+  cartItems?: CartItem[];
+  totalAmount?: number;
+  finalPrice?: number;
+  paymentMethod?: string;
+  installmentPlan?: string;
+  deliveryDate?: string;
+  deliveryTime?: string;
+}
 
 export default function OrderConfirmation() {
   const location = useLocation();
-  const orderData = location.state as any;
+  const orderData = location.state as OrderConfirmationData | null;
 
-  if (!orderData) {
+  if (!orderData || !orderData.cartItems || orderData.cartItems.length === 0) {
     return (
       <Layout>
         <div className="container py-16 text-center">
@@ -22,7 +33,7 @@ export default function OrderConfirmation() {
     );
   }
 
-  const { package: pkg, selectedClass, quantity, finalPrice, paymentMethod, installmentPlan, deliveryDate, deliveryTime } = orderData;
+  const { cartItems, finalPrice = 0, paymentMethod, installmentPlan, deliveryDate, deliveryTime } = orderData;
   const orderId = `ORD-${Date.now().toString(36).toUpperCase()}`;
 
   return (
@@ -65,24 +76,25 @@ export default function OrderConfirmation() {
               <div className="border-t pt-6 space-y-4">
                 <h4 className="font-semibold">Order Details</h4>
                 
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="flex items-start gap-3 p-4 rounded-xl bg-muted/50">
+                {cartItems.map((item) => (
+                  <div key={item.id} className="flex items-start gap-3 p-4 rounded-xl bg-muted/50">
                     <Package className="h-5 w-5 text-primary mt-0.5" />
-                    <div>
-                      <p className="font-medium">{pkg.name}</p>
-                      {selectedClass && (
-                        <p className="text-sm text-muted-foreground">{selectedClass.name} Class</p>
+                    <div className="flex-1">
+                      <p className="font-medium">{item.package.name}</p>
+                      {item.selectedClass && (
+                        <p className="text-sm text-muted-foreground">{item.selectedClass.name} Class</p>
                       )}
-                      <p className="text-sm text-muted-foreground">Qty: {quantity}</p>
+                      <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
                     </div>
+                    <p className="font-medium">{formatPrice(item.unitPrice * item.quantity)}</p>
                   </div>
-                  
-                  <div className="p-4 rounded-xl bg-muted/50">
-                    <p className="text-sm text-muted-foreground mb-1">Payment Method</p>
-                    <p className="font-medium">
-                      {paymentMethod === "one-time" ? "One-Time Payment" : `Installment (${installmentPlan?.replace("-", " ")})`}
-                    </p>
-                  </div>
+                ))}
+                
+                <div className="p-4 rounded-xl bg-muted/50">
+                  <p className="text-sm text-muted-foreground mb-1">Payment Method</p>
+                  <p className="font-medium">
+                    {paymentMethod === "one-time" ? "One-Time Payment" : `Installment (${installmentPlan?.replace("-", " ")})`}
+                  </p>
                 </div>
 
                 {(deliveryDate || deliveryTime) && (
