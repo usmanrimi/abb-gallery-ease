@@ -48,18 +48,37 @@ const Index = () => {
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_40%,hsl(var(--primary)/0.2),transparent_50%)]" />
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_60%,hsl(var(--accent)/0.2),transparent_50%)]" />
                 <div className="relative h-full w-full flex items-center justify-center">
-                  <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
-                    {categories.slice(0, 4).map((cat, i) => (
-                      <Link
-                        key={cat.id}
-                        to={`/categories/${cat.slug}`}
-                        className="aspect-square rounded-2xl bg-card shadow-elevated p-4 flex flex-col items-center justify-center text-center animate-float hover:scale-105 transition-transform cursor-pointer"
-                        style={{ animationDelay: `${i * 0.2}s` }}
-                      >
-                        <Package className="h-8 w-8 text-primary mb-2" />
-                        <span className="text-sm font-medium line-clamp-2">{cat.name}</span>
-                      </Link>
-                    ))}
+                <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
+                    {categories.slice(0, 4).map((cat, i) => {
+                      const isComingSoon = cat.slug === "seasonal" || cat.slug === "haihuwa";
+                      
+                      if (isComingSoon) {
+                        return (
+                          <div
+                            key={cat.id}
+                            className="aspect-square rounded-2xl bg-card shadow-elevated p-4 flex flex-col items-center justify-center text-center animate-float opacity-60 relative"
+                            style={{ animationDelay: `${i * 0.2}s` }}
+                            onClick={() => alert("Coming Soon")}
+                          >
+                            <Package className="h-8 w-8 text-muted-foreground mb-2" />
+                            <span className="text-sm font-medium line-clamp-2 text-muted-foreground">{cat.name}</span>
+                            <span className="absolute top-2 right-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">Coming Soon</span>
+                          </div>
+                        );
+                      }
+                      
+                      return (
+                        <Link
+                          key={cat.id}
+                          to={`/categories/${cat.slug}`}
+                          className="aspect-square rounded-2xl bg-card shadow-elevated p-4 flex flex-col items-center justify-center text-center animate-float hover:scale-105 transition-transform cursor-pointer"
+                          style={{ animationDelay: `${i * 0.2}s` }}
+                        >
+                          <Package className="h-8 w-8 text-primary mb-2" />
+                          <span className="text-sm font-medium line-clamp-2">{cat.name}</span>
+                        </Link>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -114,38 +133,78 @@ const Index = () => {
           </div>
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {categories.map((category, i) => (
-              <Link
-                key={category.id}
-                to={`/categories/${category.slug}`}
-                className="group"
-              >
-                <Card
-                  variant="interactive"
-                  className="overflow-hidden animate-slide-up"
-                  style={{ animationDelay: `${i * 0.1}s` }}
-                >
-                  <div className="aspect-[4/3] bg-gradient-to-br from-primary/10 to-accent/10 relative overflow-hidden">
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Package className="h-16 w-16 text-primary/40" />
-                    </div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
-                    <div className="absolute bottom-4 left-4 right-4">
-                      <h3 className="font-display font-semibold text-lg">{category.name}</h3>
-                    </div>
+            {categories.map((category, i) => {
+              const isComingSoon = category.slug === "seasonal" || category.slug === "haihuwa";
+              
+              if (isComingSoon) {
+                return (
+                  <div
+                    key={category.id}
+                    className="group cursor-not-allowed"
+                    onClick={() => alert("Coming Soon")}
+                  >
+                    <Card
+                      className="overflow-hidden animate-slide-up opacity-60"
+                      style={{ animationDelay: `${i * 0.1}s` }}
+                    >
+                      <div className="aspect-[4/3] bg-gradient-to-br from-muted/30 to-muted/10 relative overflow-hidden">
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Package className="h-16 w-16 text-muted-foreground/40" />
+                        </div>
+                        <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
+                        <div className="absolute bottom-4 left-4 right-4">
+                          <h3 className="font-display font-semibold text-lg text-muted-foreground">{category.name}</h3>
+                        </div>
+                        <span className="absolute top-3 right-3 text-xs bg-primary/10 text-primary px-3 py-1 rounded-full font-medium">
+                          Coming Soon
+                        </span>
+                      </div>
+                      <CardContent className="p-4">
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {category.description}
+                        </p>
+                        <div className="mt-3 flex items-center gap-1 text-muted-foreground text-sm font-medium">
+                          Coming Soon
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
-                  <CardContent className="p-4">
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {category.description}
-                    </p>
-                    <div className="mt-3 flex items-center gap-1 text-primary text-sm font-medium">
-                      Explore
-                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                );
+              }
+              
+              return (
+                <Link
+                  key={category.id}
+                  to={`/categories/${category.slug}`}
+                  className="group"
+                >
+                  <Card
+                    variant="interactive"
+                    className="overflow-hidden animate-slide-up"
+                    style={{ animationDelay: `${i * 0.1}s` }}
+                  >
+                    <div className="aspect-[4/3] bg-gradient-to-br from-primary/10 to-accent/10 relative overflow-hidden">
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Package className="h-16 w-16 text-primary/40" />
+                      </div>
+                      <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
+                      <div className="absolute bottom-4 left-4 right-4">
+                        <h3 className="font-display font-semibold text-lg">{category.name}</h3>
+                      </div>
                     </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
+                    <CardContent className="p-4">
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {category.description}
+                      </p>
+                      <div className="mt-3 flex items-center gap-1 text-primary text-sm font-medium">
+                        Explore
+                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              );
+            })}
           </div>
         </div>
       </section>

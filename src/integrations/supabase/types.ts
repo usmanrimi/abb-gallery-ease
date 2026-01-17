@@ -56,6 +56,7 @@ export type Database = {
         Row: {
           admin_response: string | null
           created_at: string
+          custom_request: string | null
           customer_email: string
           customer_name: string
           customer_whatsapp: string
@@ -78,6 +79,7 @@ export type Database = {
         Insert: {
           admin_response?: string | null
           created_at?: string
+          custom_request?: string | null
           customer_email: string
           customer_name: string
           customer_whatsapp: string
@@ -100,6 +102,7 @@ export type Database = {
         Update: {
           admin_response?: string | null
           created_at?: string
+          custom_request?: string | null
           customer_email?: string
           customer_name?: string
           customer_whatsapp?: string
@@ -118,6 +121,89 @@ export type Database = {
           total_price?: number
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      package_classes: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          package_id: string
+          price: number
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          package_id: string
+          price: number
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          package_id?: string
+          price?: number
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "package_classes_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      packages: {
+        Row: {
+          base_price: number | null
+          category_id: string
+          class_image_url: string | null
+          created_at: string
+          description: string | null
+          has_classes: boolean
+          id: string
+          image_url: string | null
+          is_hidden: boolean
+          name: string
+          starting_price: number | null
+          updated_at: string
+        }
+        Insert: {
+          base_price?: number | null
+          category_id: string
+          class_image_url?: string | null
+          created_at?: string
+          description?: string | null
+          has_classes?: boolean
+          id?: string
+          image_url?: string | null
+          is_hidden?: boolean
+          name: string
+          starting_price?: number | null
+          updated_at?: string
+        }
+        Update: {
+          base_price?: number | null
+          category_id?: string
+          class_image_url?: string | null
+          created_at?: string
+          description?: string | null
+          has_classes?: boolean
+          id?: string
+          image_url?: string | null
+          is_hidden?: boolean
+          name?: string
+          starting_price?: number | null
+          updated_at?: string
         }
         Relationships: []
       }

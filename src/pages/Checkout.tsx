@@ -103,6 +103,7 @@ export default function Checkout() {
           package_class: item.selectedClass?.name || null,
           quantity: item.quantity,
           notes: item.notes || null,
+          custom_request: item.customRequest || null,
           total_price: item.unitPrice * item.quantity,
           final_price: (item.unitPrice * item.quantity) - ((item.unitPrice * item.quantity) * (selectedPlan?.discount || 0)),
           discount_amount: (item.unitPrice * item.quantity) * (selectedPlan?.discount || 0),
