@@ -20,6 +20,7 @@ interface Order {
   package_class: string | null;
   quantity: number;
   notes: string | null;
+  custom_request: string | null;
   total_price: number;
   final_price: number;
   discount_amount: number;
@@ -242,6 +243,12 @@ export default function AdminOrders() {
                         <p className="text-sm">
                           <span className="text-muted-foreground">Notes:</span> {order.notes}
                         </p>
+                      )}
+                      {order.custom_request && (
+                        <div className="p-3 mt-2 rounded-lg bg-primary/5 border border-primary/20">
+                          <p className="text-sm font-medium text-primary">Custom Request:</p>
+                          <p className="text-sm">{order.custom_request}</p>
+                        </div>
                       )}
                       <p className="text-xs text-muted-foreground flex items-center gap-1">
                         <Calendar className="h-3 w-3" />

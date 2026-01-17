@@ -24,6 +24,7 @@ export default function PackageDetail() {
   );
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState("");
+  const [customRequest, setCustomRequest] = useState("");
 
   if (!pkg || !category) {
     return (
@@ -38,19 +39,25 @@ export default function PackageDetail() {
     );
   }
 
+  const isCustomSelected = selectedClass === "custom";
   const selectedClassData = pkg.classes?.find((c) => c.id === selectedClass);
-  const unitPrice = pkg.hasClasses 
-    ? (selectedClassData?.price || pkg.startingPrice || 0)
-    : (pkg.basePrice || 0);
+  
+  // For custom, use starting price as base; otherwise use class price or base price
+  const unitPrice = isCustomSelected 
+    ? (pkg.startingPrice || 0)
+    : pkg.hasClasses 
+      ? (selectedClassData?.price || pkg.startingPrice || 0)
+      : (pkg.basePrice || 0);
 
   const handleCalculateCost = () => {
     navigate("/checkout", {
       state: {
         package: pkg,
-        selectedClass: selectedClassData,
+        selectedClass: isCustomSelected ? { id: "custom", name: "Custom", price: unitPrice, description: customRequest } : selectedClassData,
         quantity,
         notes,
         unitPrice,
+        customRequest: isCustomSelected ? customRequest : undefined,
       },
     });
   };
@@ -58,10 +65,13 @@ export default function PackageDetail() {
   const handleAddToCart = () => {
     addToCart({
       package: pkg,
-      selectedClass: pkg.hasClasses ? selectedClassData : undefined,
+      selectedClass: isCustomSelected 
+        ? { id: "custom", name: "Custom", price: unitPrice, description: "Custom request" } 
+        : pkg.hasClasses ? selectedClassData : undefined,
       quantity,
       notes,
       unitPrice,
+      customRequest: isCustomSelected ? customRequest : undefined,
     });
     toast.success(`${pkg.name} added to cart!`);
   };
@@ -170,7 +180,52 @@ export default function PackageDetail() {
                           </div>
                         </Label>
                       ))}
+                      
+                      {/* Custom Option */}
+                      <Label
+                        htmlFor="custom"
+                        className={cn(
+                          "flex items-start gap-3 rounded-xl border-2 p-4 cursor-pointer transition-all",
+                          selectedClass === "custom"
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-primary/50 border-dashed"
+                        )}
+                      >
+                        <RadioGroupItem
+                          value="custom"
+                          id="custom"
+                          className="mt-0.5"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <span className="font-semibold">Custom</span>
+                            <span className="text-sm text-muted-foreground">
+                              Price based on request
+                            </span>
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Describe exactly what you want - we'll create a custom package for you
+                          </p>
+                        </div>
+                      </Label>
                     </RadioGroup>
+                    
+                    {/* Custom Request Text Area */}
+                    {isCustomSelected && (
+                      <div className="space-y-2 pt-2">
+                        <Label htmlFor="customRequest" className="text-sm font-medium">
+                          Describe what you want
+                        </Label>
+                        <Textarea
+                          id="customRequest"
+                          placeholder="Write your preferred items, budget, and any special request…"
+                          value={customRequest}
+                          onChange={(e) => setCustomRequest(e.target.value)}
+                          rows={4}
+                          className="border-primary/30"
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -230,6 +285,7 @@ export default function PackageDetail() {
                 size="lg"
                 className="w-full sm:w-auto"
                 onClick={handleAddToCart}
+                disabled={isCustomSelected && !customRequest.trim()}
               >
                 <ShoppingCart className="h-5 w-5 mr-2" />
                 Add to Cart
@@ -238,6 +294,7 @@ export default function PackageDetail() {
                 size="lg"
                 className="w-full sm:w-auto"
                 onClick={handleCalculateCost}
+                disabled={isCustomSelected && !customRequest.trim()}
               >
                 <Calculator className="h-5 w-5 mr-2" />
                 Calculate My Cost

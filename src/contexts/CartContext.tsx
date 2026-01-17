@@ -8,6 +8,7 @@ export interface CartItem {
   quantity: number;
   notes: string;
   unitPrice: number;
+  customRequest?: string; // For custom class option
 }
 
 interface CartContextType {
