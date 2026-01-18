@@ -94,11 +94,12 @@ export default function AdminPackages() {
         has_classes: formData.has_classes,
         base_price: formData.base_price ? parseFloat(formData.base_price) : null,
         starting_price: formData.starting_price ? parseFloat(formData.starting_price) : null,
-        classes: formData.has_classes ? formData.classes.filter(c => c.price).map(c => ({
+        classes: formData.has_classes ? formData.classes.filter(c => c.price).map((c, index) => ({
           name: c.name,
           price: parseFloat(c.price),
           description: c.description,
-        })) : undefined,
+          sort_order: index,
+        })) : [],
       };
 
       if (editingPackage) {
@@ -344,7 +345,7 @@ export default function AdminPackages() {
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {categoryPackages.map((pkg) => (
                   <Card key={pkg.id} className={`overflow-hidden ${pkg.is_hidden ? "opacity-60" : ""}`}>
-                    <div className="aspect-video bg-muted relative flex items-center justify-center">
+                    <div className="aspect-video bg-muted relative flex items-center justify-center p-2">
                       {pkg.image_url && pkg.image_url !== "/placeholder.svg" ? (
                         <img
                           src={pkg.image_url}

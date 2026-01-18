@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { formatPrice } from "@/data/categories";
 import { CheckCircle2, Package, Clock, ArrowRight } from "lucide-react";
 import { CartItem } from "@/contexts/CartContext";
+import { PaymentInstructions } from "@/components/order/PaymentInstructions";
 
 interface OrderConfirmationData {
   cartItems?: CartItem[];
@@ -39,26 +40,33 @@ export default function OrderConfirmation() {
   return (
     <Layout>
       <div className="container py-12 md:py-20">
-        <div className="max-w-2xl mx-auto text-center animate-scale-in">
-          <div className="flex justify-center mb-6">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-success/10">
-              <CheckCircle2 className="h-10 w-10 text-success" />
+        <div className="max-w-2xl mx-auto animate-scale-in">
+          <div className="text-center mb-8">
+            <div className="flex justify-center mb-6">
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-success/10">
+                <CheckCircle2 className="h-10 w-10 text-success" />
+              </div>
             </div>
+
+            <h1 className="text-3xl font-bold font-display md:text-4xl mb-4">
+              Order Received!
+            </h1>
+            
+            <p className="text-lg text-muted-foreground mb-2">
+              Thank you for your order. Your order number is:
+            </p>
+            
+            <p className="text-2xl font-mono font-bold text-primary mb-6">
+              {orderId}
+            </p>
           </div>
 
-          <h1 className="text-3xl font-bold font-display md:text-4xl mb-4">
-            Order Received!
-          </h1>
-          
-          <p className="text-lg text-muted-foreground mb-2">
-            Thank you for your order. Your order number is:
-          </p>
-          
-          <p className="text-2xl font-mono font-bold text-primary mb-6">
-            {orderId}
-          </p>
+          {/* Payment Instructions */}
+          <div className="mb-8">
+            <PaymentInstructions amount={finalPrice} />
+          </div>
 
-          <Card className="mb-8 text-left">
+          <Card className="mb-8">
             <CardContent className="p-6">
               <div className="flex items-start gap-4 mb-6">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -67,7 +75,7 @@ export default function OrderConfirmation() {
                 <div>
                   <h3 className="font-semibold text-lg">What happens next?</h3>
                   <p className="text-muted-foreground">
-                    We will review your order and get back to you with pricing within <strong>48 hours</strong>. 
+                    Please transfer to the account above. We will confirm your payment and process your order within <strong>24-48 hours</strong>. 
                     You'll receive a notification via SMS and email.
                   </p>
                 </div>
@@ -83,6 +91,9 @@ export default function OrderConfirmation() {
                       <p className="font-medium">{item.package.name}</p>
                       {item.selectedClass && (
                         <p className="text-sm text-muted-foreground">{item.selectedClass.name} Class</p>
+                      )}
+                      {item.customRequest && (
+                        <p className="text-sm text-primary mt-1">Custom Request: {item.customRequest}</p>
                       )}
                       <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
                     </div>
@@ -113,7 +124,7 @@ export default function OrderConfirmation() {
                 )}
 
                 <div className="flex justify-between items-center pt-4 border-t">
-                  <span className="font-semibold">Estimated Total</span>
+                  <span className="font-semibold">Total Amount</span>
                   <span className="text-2xl font-bold text-primary">{formatPrice(finalPrice)}</span>
                 </div>
               </div>

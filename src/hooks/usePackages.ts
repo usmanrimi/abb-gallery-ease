@@ -270,6 +270,7 @@ export function useAdminPackages() {
       .update({
         name: updates.name,
         description: updates.description,
+        category_id: updates.category_id,
         image_url: updates.image_url,
         class_image_url: updates.class_image_url,
         has_classes: updates.has_classes,
@@ -280,6 +281,29 @@ export function useAdminPackages() {
       .eq("id", id);
 
     if (error) throw error;
+
+    // Update classes if provided
+    if (updates.classes !== undefined) {
+      // First delete existing classes
+      await supabase
+        .from("package_classes")
+        .delete()
+        .eq("package_id", id);
+
+      // Then insert new classes
+      if (updates.classes.length > 0) {
+        const classesToInsert = updates.classes.map((c, index) => ({
+          package_id: id,
+          name: c.name,
+          price: c.price,
+          description: c.description,
+          sort_order: index,
+        }));
+
+        await supabase.from("package_classes").insert(classesToInsert);
+      }
+    }
+
     await fetchPackages();
   };
 

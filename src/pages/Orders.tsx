@@ -1,41 +1,30 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Package, Clock, CheckCircle2, Truck, ChevronRight } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Package, Clock, CheckCircle2, Truck, ChevronRight, MessageCircle, Loader2 } from "lucide-react";
 import { formatPrice } from "@/data/categories";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { OrderChat } from "@/components/order/OrderChat";
+import { PaymentInstructions } from "@/components/order/PaymentInstructions";
 
-// Mock orders data
-const mockOrders = [
-  {
-    id: "ORD-ABC123",
-    packageName: "Sallah Essentials",
-    className: "VIP",
-    quantity: 2,
-    totalPrice: 300000,
-    status: "pending",
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-  },
-  {
-    id: "ORD-DEF456",
-    packageName: "Bridal Complete",
-    className: "Special",
-    quantity: 1,
-    totalPrice: 350000,
-    status: "processing",
-    createdAt: new Date(Date.now() - 172800000).toISOString(),
-  },
-  {
-    id: "ORD-GHI789",
-    packageName: "Baby Welcome",
-    className: "Standard",
-    quantity: 1,
-    totalPrice: 80000,
-    status: "delivered",
-    createdAt: new Date(Date.now() - 604800000).toISOString(),
-  },
-];
+interface Order {
+  id: string;
+  package_name: string;
+  package_class: string | null;
+  quantity: number;
+  total_price: number;
+  final_price: number;
+  admin_set_price: number | null;
+  status: string;
+  created_at: string;
+  admin_response: string | null;
+  custom_request: string | null;
+}
 
 const statusConfig = {
   pending: {
@@ -50,21 +39,66 @@ const statusConfig = {
     variant: "default" as const,
     description: "Your order is being prepared",
   },
-  shipped: {
-    label: "Shipped",
-    icon: Truck,
+  confirmed: {
+    label: "Confirmed",
+    icon: CheckCircle2,
     variant: "default" as const,
-    description: "On the way to you",
+    description: "Payment confirmed",
   },
   delivered: {
     label: "Delivered",
-    icon: CheckCircle2,
+    icon: Truck,
     variant: "outline" as const,
     description: "Order completed",
   },
 };
 
 export default function Orders() {
+  const { user } = useAuth();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      fetchOrders();
+    }
+  }, [user]);
+
+  const fetchOrders = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("user_id", user?.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setOrders(data || []);
+    } catch (error: any) {
+      console.error("Error fetching orders:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getDisplayPrice = (order: Order) => {
+    return order.admin_set_price || order.final_price;
+  };
+
+  if (!user) {
+    return (
+      <Layout>
+        <div className="container py-16 text-center">
+          <h1 className="text-2xl font-bold mb-4">Please login to view your orders</h1>
+          <Link to="/login">
+            <Button>Login</Button>
+          </Link>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="container py-8 md:py-12">
@@ -82,7 +116,11 @@ export default function Orders() {
           </p>
         </div>
 
-        {mockOrders.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : orders.length === 0 ? (
           <Card className="py-16 text-center">
             <CardContent>
               <Package className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
@@ -97,9 +135,10 @@ export default function Orders() {
           </Card>
         ) : (
           <div className="space-y-4">
-            {mockOrders.map((order, i) => {
-              const status = statusConfig[order.status as keyof typeof statusConfig];
+            {orders.map((order, i) => {
+              const status = statusConfig[order.status as keyof typeof statusConfig] || statusConfig.pending;
               const StatusIcon = status.icon;
+              const displayPrice = getDisplayPrice(order);
 
               return (
                 <Card
@@ -109,39 +148,78 @@ export default function Orders() {
                   style={{ animationDelay: `${i * 0.1}s` }}
                 >
                   <CardContent className="p-6">
-                    <div className="flex flex-col md:flex-row md:items-center gap-4">
+                    <div className="flex flex-col md:flex-row md:items-start gap-4">
                       <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
+                        <div className="flex items-center gap-3 mb-2 flex-wrap">
                           <span className="font-mono text-sm text-muted-foreground">
-                            {order.id}
+                            {order.id.slice(0, 8).toUpperCase()}
                           </span>
                           <Badge variant={status.variant}>
                             <StatusIcon className="h-3 w-3 mr-1" />
                             {status.label}
                           </Badge>
                         </div>
-                        <h3 className="font-semibold text-lg">{order.packageName}</h3>
+                        <h3 className="font-semibold text-lg">{order.package_name}</h3>
                         <p className="text-sm text-muted-foreground">
-                          {order.className} Class • Qty: {order.quantity}
+                          {order.package_class ? `${order.package_class} Class • ` : ""}Qty: {order.quantity}
                         </p>
+                        {order.custom_request && (
+                          <p className="text-sm text-primary mt-1">Custom Request: {order.custom_request}</p>
+                        )}
                         <p className="text-sm text-muted-foreground mt-1">
                           Ordered on{" "}
-                          {new Date(order.createdAt).toLocaleDateString("en-NG", {
+                          {new Date(order.created_at).toLocaleDateString("en-NG", {
                             year: "numeric",
                             month: "long",
                             day: "numeric",
                           })}
                         </p>
+
+                        {order.admin_response && (
+                          <div className="mt-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                            <p className="text-sm font-medium text-primary">Admin Response:</p>
+                            <p className="text-sm">{order.admin_response}</p>
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                         <div className="text-right">
                           <p className="text-sm text-muted-foreground">Total</p>
-                          <p className="text-xl font-bold">{formatPrice(order.totalPrice)}</p>
+                          <p className="text-xl font-bold text-primary">{formatPrice(displayPrice)}</p>
+                          {order.admin_set_price && (
+                            <p className="text-xs text-success">Price confirmed by admin</p>
+                          )}
                         </div>
-                        <Button variant="outline" size="sm">
-                          View Details
-                        </Button>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" size="sm" onClick={() => setSelectedOrder(order)}>
+                              <MessageCircle className="h-4 w-4 mr-2" />
+                              Details & Chat
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+                            <DialogHeader>
+                              <DialogTitle>Order Details</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div className="p-4 rounded-lg bg-muted/50">
+                                <h4 className="font-semibold mb-2">{order.package_name}</h4>
+                                {order.package_class && (
+                                  <p className="text-sm text-muted-foreground">Class: {order.package_class}</p>
+                                )}
+                                <p className="text-sm text-muted-foreground">Quantity: {order.quantity}</p>
+                                <p className="font-semibold text-primary mt-2">{formatPrice(displayPrice)}</p>
+                              </div>
+
+                              {/* Payment Instructions */}
+                              <PaymentInstructions amount={displayPrice} />
+
+                              {/* Chat */}
+                              <OrderChat orderId={order.id} isAdmin={false} />
+                            </div>
+                          </DialogContent>
+                        </Dialog>
                       </div>
                     </div>
 
@@ -151,8 +229,9 @@ export default function Orders() {
                         <div className="flex items-center gap-2 text-sm">
                           {Object.entries(statusConfig).map(([key, config], index) => {
                             const Icon = config.icon;
-                            const isActive =
-                              Object.keys(statusConfig).indexOf(order.status) >= index;
+                            const statusOrder = ["pending", "processing", "confirmed", "delivered"];
+                            const currentIndex = statusOrder.indexOf(order.status);
+                            const isActive = currentIndex >= index;
                             return (
                               <div key={key} className="flex items-center gap-2">
                                 <div
@@ -167,7 +246,7 @@ export default function Orders() {
                                 {index < Object.keys(statusConfig).length - 1 && (
                                   <div
                                     className={`h-0.5 w-8 sm:w-12 ${
-                                      Object.keys(statusConfig).indexOf(order.status) > index
+                                      currentIndex > index
                                         ? "bg-primary"
                                         : "bg-muted"
                                     }`}
