@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { formatPrice } from "@/data/categories";
-import { ShoppingCart, Eye, MessageSquare, Search, Calendar, RefreshCw } from "lucide-react";
+import { ShoppingCart, MessageSquare, Search, Calendar, RefreshCw, DollarSign } from "lucide-react";
+import { OrderChat } from "@/components/order/OrderChat";
 
 interface Order {
   id: string;
@@ -23,6 +24,7 @@ interface Order {
   custom_request: string | null;
   total_price: number;
   final_price: number;
+  admin_set_price: number | null;
   discount_amount: number;
   payment_method: string;
   installment_plan: string | null;
@@ -46,6 +48,7 @@ export default function AdminOrders() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [response, setResponse] = useState("");
   const [newStatus, setNewStatus] = useState("");
+  const [customPrice, setCustomPrice] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchOrders = async () => {
@@ -78,25 +81,37 @@ export default function AdminOrders() {
     
     setIsSubmitting(true);
     try {
-      // Update order with response and status
+      const updateData: any = {
+        admin_response: response,
+        status: newStatus || selectedOrder.status,
+      };
+
+      // If custom price is set, add it to the update
+      if (customPrice && parseFloat(customPrice) > 0) {
+        updateData.admin_set_price = parseFloat(customPrice);
+      }
+
+      // Update order with response, status, and potentially custom price
       const { error: orderError } = await supabase
         .from("orders")
-        .update({
-          admin_response: response,
-          status: newStatus || selectedOrder.status,
-        })
+        .update(updateData)
         .eq("id", selectedOrder.id);
 
       if (orderError) throw orderError;
 
       // Create notification for customer
+      let notificationMessage = response || `Your order status has been updated to ${newStatus || selectedOrder.status}`;
+      if (customPrice && parseFloat(customPrice) > 0) {
+        notificationMessage = `Your order has been priced at ${formatPrice(parseFloat(customPrice))}. ${response || "Please proceed with payment."}`;
+      }
+
       const { error: notifError } = await supabase
         .from("notifications")
         .insert({
           user_id: selectedOrder.user_id,
           order_id: selectedOrder.id,
-          title: `Order Update: ${selectedOrder.package_name}`,
-          message: response || `Your order status has been updated to ${newStatus || selectedOrder.status}`,
+          title: customPrice ? `Price Set: ${selectedOrder.package_name}` : `Order Update: ${selectedOrder.package_name}`,
+          message: notificationMessage,
         });
 
       if (notifError) throw notifError;
@@ -109,6 +124,7 @@ export default function AdminOrders() {
       setSelectedOrder(null);
       setResponse("");
       setNewStatus("");
+      setCustomPrice("");
       fetchOrders();
     } catch (error: any) {
       toast({
@@ -236,7 +252,12 @@ export default function AdminOrders() {
                         </div>
                         <div>
                           <span className="text-muted-foreground">Total:</span>{" "}
-                          <span className="font-medium text-primary">{formatPrice(order.final_price)}</span>
+                          <span className="font-medium text-primary">
+                            {formatPrice(order.admin_set_price || order.final_price)}
+                          </span>
+                          {order.admin_set_price && (
+                            <span className="ml-1 text-xs text-success">(Custom)</span>
+                          )}
                         </div>
                       </div>
                       {order.notes && (
@@ -267,57 +288,91 @@ export default function AdminOrders() {
                               setSelectedOrder(order);
                               setResponse(order.admin_response || "");
                               setNewStatus(order.status);
+                              setCustomPrice(order.admin_set_price?.toString() || "");
                             }}
                           >
                             <MessageSquare className="h-4 w-4 mr-2" />
                             Respond
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-lg">
+                        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                           <DialogHeader>
                             <DialogTitle>Respond to Order</DialogTitle>
                           </DialogHeader>
-                          <div className="space-y-4">
-                            <div className="p-4 rounded-lg bg-muted/50 space-y-2">
-                              <p className="font-medium">{order.package_name}</p>
-                              <p className="text-sm text-muted-foreground">
-                                Customer: {order.customer_name}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                Amount: {formatPrice(order.final_price)}
-                              </p>
+                          <div className="grid gap-4 lg:grid-cols-2">
+                            <div className="space-y-4">
+                              <div className="p-4 rounded-lg bg-muted/50 space-y-2">
+                                <p className="font-medium">{order.package_name}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  Customer: {order.customer_name}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  Current Price: {formatPrice(order.final_price)}
+                                </p>
+                                {order.custom_request && (
+                                  <div className="pt-2 border-t">
+                                    <p className="text-xs text-primary font-medium">Custom Request:</p>
+                                    <p className="text-sm">{order.custom_request}</p>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label>Update Status</Label>
+                                <Select value={newStatus} onValueChange={setNewStatus}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select status" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="pending">Pending</SelectItem>
+                                    <SelectItem value="processing">Processing</SelectItem>
+                                    <SelectItem value="confirmed">Confirmed</SelectItem>
+                                    <SelectItem value="delivered">Delivered</SelectItem>
+                                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              {/* Custom Price Setting - especially for Custom orders */}
+                              <div className="space-y-2">
+                                <Label className="flex items-center gap-2">
+                                  <DollarSign className="h-4 w-4" />
+                                  Set Final Price (₦)
+                                </Label>
+                                <Input
+                                  type="number"
+                                  placeholder="Enter final price..."
+                                  value={customPrice}
+                                  onChange={(e) => setCustomPrice(e.target.value)}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                  Set a custom price for this order. Customer will be notified.
+                                </p>
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label>Message to Customer</Label>
+                                <Textarea
+                                  placeholder="Enter your response..."
+                                  value={response}
+                                  onChange={(e) => setResponse(e.target.value)}
+                                  rows={4}
+                                />
+                              </div>
+
+                              <Button
+                                className="w-full"
+                                onClick={handleRespond}
+                                disabled={isSubmitting}
+                              >
+                                {isSubmitting ? "Sending..." : "Send Response"}
+                              </Button>
                             </div>
-                            <div className="space-y-2">
-                              <Label>Update Status</Label>
-                              <Select value={newStatus} onValueChange={setNewStatus}>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="pending">Pending</SelectItem>
-                                  <SelectItem value="processing">Processing</SelectItem>
-                                  <SelectItem value="confirmed">Confirmed</SelectItem>
-                                  <SelectItem value="delivered">Delivered</SelectItem>
-                                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                                </SelectContent>
-                              </Select>
+
+                            {/* Chat Section */}
+                            <div>
+                              <OrderChat orderId={order.id} isAdmin={true} />
                             </div>
-                            <div className="space-y-2">
-                              <Label>Message to Customer</Label>
-                              <Textarea
-                                placeholder="Enter your response..."
-                                value={response}
-                                onChange={(e) => setResponse(e.target.value)}
-                                rows={4}
-                              />
-                            </div>
-                            <Button
-                              className="w-full"
-                              onClick={handleRespond}
-                              disabled={isSubmitting}
-                            >
-                              {isSubmitting ? "Sending..." : "Send Response"}
-                            </Button>
                           </div>
                         </DialogContent>
                       </Dialog>

@@ -52,9 +52,51 @@ export type Database = {
           },
         ]
       }
+      order_messages: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string | null
+          is_read: boolean
+          message: string | null
+          order_id: string
+          sender_id: string
+          sender_role: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          is_read?: boolean
+          message?: string | null
+          order_id: string
+          sender_id: string
+          sender_role: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          is_read?: boolean
+          message?: string | null
+          order_id?: string
+          sender_id?: string
+          sender_role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_messages_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           admin_response: string | null
+          admin_set_price: number | null
           created_at: string
           custom_request: string | null
           customer_email: string
@@ -78,6 +120,7 @@ export type Database = {
         }
         Insert: {
           admin_response?: string | null
+          admin_set_price?: number | null
           created_at?: string
           custom_request?: string | null
           customer_email: string
@@ -101,6 +144,7 @@ export type Database = {
         }
         Update: {
           admin_response?: string | null
+          admin_set_price?: number | null
           created_at?: string
           custom_request?: string | null
           customer_email?: string
@@ -203,6 +247,33 @@ export type Database = {
           is_hidden?: boolean
           name?: string
           starting_price?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      payment_settings: {
+        Row: {
+          account_name: string
+          account_number: string
+          additional_note: string | null
+          bank_name: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          account_name?: string
+          account_number?: string
+          additional_note?: string | null
+          bank_name?: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          account_name?: string
+          account_number?: string
+          additional_note?: string | null
+          bank_name?: string
+          id?: string
           updated_at?: string
         }
         Relationships: []
