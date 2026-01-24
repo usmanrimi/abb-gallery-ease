@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useCart, CartItem } from "@/contexts/CartContext";
+import { customerInfoSchema, orderNotesSchema, customRequestSchema, deliveryTimeSchema, validateInput } from "@/lib/validations";
 
 // Discount-based payment plans
 const discountPlans = [
@@ -70,13 +71,60 @@ export default function Checkout() {
     ? finalPrice / parseInt(paymentPlan)
     : 0;
 
+  // Validation errors state
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+
+    // Validate customer info
+    const customerResult = customerInfoSchema.safeParse(customerInfo);
+    if (!customerResult.success) {
+      customerResult.error.errors.forEach((err) => {
+        const field = err.path[0] as string;
+        if (!errors[field]) {
+          errors[field] = err.message;
+        }
+      });
+    }
+
+    // Validate delivery time if provided
+    if (deliveryTime) {
+      const deliveryTimeResult = validateInput(deliveryTimeSchema, deliveryTime);
+      if (deliveryTimeResult.success === false) {
+        errors.deliveryTime = deliveryTimeResult.error;
+      }
+    }
+
+    // Validate cart items notes and custom requests
+    cartItems.forEach((item, index) => {
+      if (item.notes) {
+        const notesResult = validateInput(orderNotesSchema, item.notes);
+        if (notesResult.success === false) {
+          errors[`notes_${index}`] = notesResult.error;
+        }
+      }
+      if (item.customRequest) {
+        const customResult = validateInput(customRequestSchema, item.customRequest);
+        if (customResult.success === false) {
+          errors[`customRequest_${index}`] = customResult.error;
+        }
+      }
+    });
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const isFormValid = customerInfo.fullName.trim() && customerInfo.email.trim() && customerInfo.whatsappNumber.trim();
 
   const handleSubmit = async () => {
-    if (!isFormValid) {
+    // Validate all inputs
+    if (!validateForm()) {
+      const firstError = Object.values(validationErrors)[0];
       toast({
-        title: "Please fill in all required fields",
-        description: "Full Name, Email, and WhatsApp Number are required.",
+        title: "Validation Error",
+        description: firstError || "Please check your input and try again.",
         variant: "destructive",
       });
       return;
@@ -95,28 +143,37 @@ export default function Checkout() {
     setIsSubmitting(true);
     
     try {
+      // Sanitize inputs before submission
+      const sanitizedCustomerName = customerInfo.fullName.trim().slice(0, 100);
+      const sanitizedEmail = customerInfo.email.trim().toLowerCase().slice(0, 255);
+      const sanitizedWhatsapp = customerInfo.whatsappNumber.trim().slice(0, 20);
+      const sanitizedDeliveryTime = deliveryTime?.trim().slice(0, 100) || null;
+
       // Create an order for each cart item
-      const orderPromises = cartItems.map((item) =>
-        supabase.from("orders").insert({
+      const orderPromises = cartItems.map((item) => {
+        const sanitizedNotes = item.notes?.trim().slice(0, 1000) || null;
+        const sanitizedCustomRequest = item.customRequest?.trim().slice(0, 2000) || null;
+
+        return supabase.from("orders").insert({
           user_id: user.id,
-          package_name: item.package.name,
-          package_class: item.selectedClass?.name || null,
+          package_name: item.package.name.slice(0, 255),
+          package_class: item.selectedClass?.name?.slice(0, 100) || null,
           quantity: item.quantity,
-          notes: item.notes || null,
-          custom_request: item.customRequest || null,
+          notes: sanitizedNotes,
+          custom_request: sanitizedCustomRequest,
           total_price: item.unitPrice * item.quantity,
           final_price: (item.unitPrice * item.quantity) - ((item.unitPrice * item.quantity) * (selectedPlan?.discount || 0)),
           discount_amount: (item.unitPrice * item.quantity) * (selectedPlan?.discount || 0),
           payment_method: paymentPlan,
           installment_plan: paymentPlan !== "one-time" ? paymentPlan : null,
           delivery_date: deliveryDate || null,
-          delivery_time: deliveryTime || null,
-          customer_name: customerInfo.fullName,
-          customer_email: customerInfo.email,
-          customer_whatsapp: customerInfo.whatsappNumber,
+          delivery_time: sanitizedDeliveryTime,
+          customer_name: sanitizedCustomerName,
+          customer_email: sanitizedEmail,
+          customer_whatsapp: sanitizedWhatsapp,
           status: "pending",
-        })
-      );
+        });
+      });
 
       const results = await Promise.all(orderPromises);
       const hasError = results.some((result) => result.error);
@@ -232,12 +289,21 @@ export default function Checkout() {
                     <Input
                       id="fullName"
                       placeholder="Enter your full name"
-                      className="pl-10"
+                      className={cn("pl-10", validationErrors.fullName && "border-destructive")}
                       value={customerInfo.fullName}
-                      onChange={(e) => setCustomerInfo({ ...customerInfo, fullName: e.target.value })}
+                      onChange={(e) => {
+                        setCustomerInfo({ ...customerInfo, fullName: e.target.value });
+                        if (validationErrors.fullName) {
+                          setValidationErrors((prev) => ({ ...prev, fullName: "" }));
+                        }
+                      }}
+                      maxLength={100}
                       required
                     />
                   </div>
+                  {validationErrors.fullName && (
+                    <p className="text-xs text-destructive">{validationErrors.fullName}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email Address *</Label>
@@ -247,12 +313,21 @@ export default function Checkout() {
                       id="email"
                       type="email"
                       placeholder="Enter your email address"
-                      className="pl-10"
+                      className={cn("pl-10", validationErrors.email && "border-destructive")}
                       value={customerInfo.email}
-                      onChange={(e) => setCustomerInfo({ ...customerInfo, email: e.target.value })}
+                      onChange={(e) => {
+                        setCustomerInfo({ ...customerInfo, email: e.target.value });
+                        if (validationErrors.email) {
+                          setValidationErrors((prev) => ({ ...prev, email: "" }));
+                        }
+                      }}
+                      maxLength={255}
                       required
                     />
                   </div>
+                  {validationErrors.email && (
+                    <p className="text-xs text-destructive">{validationErrors.email}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="whatsappNumber">WhatsApp Number *</Label>
@@ -262,12 +337,21 @@ export default function Checkout() {
                       id="whatsappNumber"
                       type="tel"
                       placeholder="e.g., +234 801 234 5678"
-                      className="pl-10"
+                      className={cn("pl-10", validationErrors.whatsappNumber && "border-destructive")}
                       value={customerInfo.whatsappNumber}
-                      onChange={(e) => setCustomerInfo({ ...customerInfo, whatsappNumber: e.target.value })}
+                      onChange={(e) => {
+                        setCustomerInfo({ ...customerInfo, whatsappNumber: e.target.value });
+                        if (validationErrors.whatsappNumber) {
+                          setValidationErrors((prev) => ({ ...prev, whatsappNumber: "" }));
+                        }
+                      }}
+                      maxLength={20}
                       required
                     />
                   </div>
+                  {validationErrors.whatsappNumber && (
+                    <p className="text-xs text-destructive">{validationErrors.whatsappNumber}</p>
+                  )}
                 </div>
               </CardContent>
             </Card>

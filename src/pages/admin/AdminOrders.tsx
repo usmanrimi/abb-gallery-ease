@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatPrice } from "@/data/categories";
 import { ShoppingCart, MessageSquare, Search, Calendar, RefreshCw, DollarSign } from "lucide-react";
 import { OrderChat } from "@/components/order/OrderChat";
+import { adminResponseSchema, customPriceSchema, validateInput } from "@/lib/validations";
 
 interface Order {
   id: string;
@@ -79,16 +80,41 @@ export default function AdminOrders() {
   const handleRespond = async () => {
     if (!selectedOrder) return;
     
+    // Validate inputs before submission
+    const responseValidation = validateInput(adminResponseSchema, response);
+    if (responseValidation.success === false) {
+      toast({
+        title: "Validation Error",
+        description: responseValidation.error,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const priceValidation = validateInput(customPriceSchema, customPrice);
+    if (priceValidation.success === false) {
+      toast({
+        title: "Validation Error",
+        description: priceValidation.error,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
+      // Sanitize inputs
+      const sanitizedResponse = response?.trim().slice(0, 2000) || null;
+      const sanitizedPrice = customPrice && parseFloat(customPrice) > 0 ? parseFloat(customPrice) : null;
+
       const updateData: any = {
-        admin_response: response,
+        admin_response: sanitizedResponse,
         status: newStatus || selectedOrder.status,
       };
 
       // If custom price is set, add it to the update
-      if (customPrice && parseFloat(customPrice) > 0) {
-        updateData.admin_set_price = parseFloat(customPrice);
+      if (sanitizedPrice !== null) {
+        updateData.admin_set_price = sanitizedPrice;
       }
 
       // Update order with response, status, and potentially custom price
@@ -100,18 +126,24 @@ export default function AdminOrders() {
       if (orderError) throw orderError;
 
       // Create notification for customer
-      let notificationMessage = response || `Your order status has been updated to ${newStatus || selectedOrder.status}`;
-      if (customPrice && parseFloat(customPrice) > 0) {
-        notificationMessage = `Your order has been priced at ${formatPrice(parseFloat(customPrice))}. ${response || "Please proceed with payment."}`;
+      let notificationMessage = sanitizedResponse || `Your order status has been updated to ${newStatus || selectedOrder.status}`;
+      if (sanitizedPrice !== null) {
+        notificationMessage = `Your order has been priced at ${formatPrice(sanitizedPrice)}. ${sanitizedResponse || "Please proceed with payment."}`;
       }
+
+      // Truncate notification message for storage
+      const truncatedTitle = (sanitizedPrice !== null 
+        ? `Price Set: ${selectedOrder.package_name}` 
+        : `Order Update: ${selectedOrder.package_name}`
+      ).slice(0, 255);
 
       const { error: notifError } = await supabase
         .from("notifications")
         .insert({
           user_id: selectedOrder.user_id,
           order_id: selectedOrder.id,
-          title: customPrice ? `Price Set: ${selectedOrder.package_name}` : `Order Update: ${selectedOrder.package_name}`,
-          message: notificationMessage,
+          title: truncatedTitle,
+          message: notificationMessage.slice(0, 2000),
         });
 
       if (notifError) throw notifError;
