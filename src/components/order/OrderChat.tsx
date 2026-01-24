@@ -6,9 +6,16 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { MessageCircle, Send, Loader2, ImagePlus, X } from "lucide-react";
+import { MessageCircle, Send, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { z } from "zod";
+
+// Chat message validation schema
+const chatMessageSchema = z.string()
+  .trim()
+  .min(1, "Message cannot be empty")
+  .max(5000, "Message must be less than 5000 characters");
 
 interface Message {
   id: string;
@@ -102,13 +109,22 @@ export function OrderChat({ orderId, isAdmin = false }: OrderChatProps) {
   const handleSend = async () => {
     if (!newMessage.trim() || !user) return;
 
+    // Validate message before sending
+    const validationResult = chatMessageSchema.safeParse(newMessage);
+    if (!validationResult.success) {
+      toast.error(validationResult.error.errors[0]?.message || "Invalid message");
+      return;
+    }
+
+    const sanitizedMessage = validationResult.data;
+
     setSending(true);
     try {
       const { error } = await supabase.from("order_messages").insert({
         order_id: orderId,
         sender_id: user.id,
         sender_role: isAdmin ? "admin" : "customer",
-        message: newMessage.trim(),
+        message: sanitizedMessage,
       });
 
       if (error) throw error;
