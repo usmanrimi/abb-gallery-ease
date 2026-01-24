@@ -28,22 +28,22 @@ interface Order {
 
 const statusConfig = {
   pending: {
-    label: "Pending Review",
+    label: "Pending Admin Response",
     icon: Clock,
     variant: "secondary" as const,
-    description: "We're reviewing your order",
+    description: "Awaiting admin to set your price",
   },
   processing: {
-    label: "Processing",
+    label: "Awaiting Payment",
     icon: Package,
     variant: "default" as const,
-    description: "Your order is being prepared",
+    description: "Please transfer to complete your order",
   },
   confirmed: {
     label: "Confirmed",
     icon: CheckCircle2,
     variant: "default" as const,
-    description: "Payment confirmed",
+    description: "Payment confirmed, preparing your order",
   },
   delivered: {
     label: "Delivered",
@@ -209,11 +209,28 @@ export default function Orders() {
                                   <p className="text-sm text-muted-foreground">Class: {order.package_class}</p>
                                 )}
                                 <p className="text-sm text-muted-foreground">Quantity: {order.quantity}</p>
+                                {order.custom_request && (
+                                  <div className="mt-2 p-2 rounded bg-amber-500/10 border border-amber-500/20">
+                                    <p className="text-xs text-amber-600 font-medium">Custom Request:</p>
+                                    <p className="text-sm">{order.custom_request}</p>
+                                  </div>
+                                )}
                                 <p className="font-semibold text-primary mt-2">{formatPrice(displayPrice)}</p>
                               </div>
 
-                              {/* Payment Instructions */}
-                              <PaymentInstructions amount={displayPrice} />
+                              {/* Show payment instructions only if not pending (custom awaiting price) */}
+                              {order.status !== "pending" && (
+                                <PaymentInstructions amount={displayPrice} />
+                              )}
+
+                              {/* Pending custom order message */}
+                              {order.status === "pending" && order.custom_request && (
+                                <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                                  <p className="text-sm text-amber-700 text-center">
+                                    Admin is reviewing your custom request. You'll receive the final price and payment instructions soon.
+                                  </p>
+                                </div>
+                              )}
 
                               {/* Chat */}
                               <OrderChat orderId={order.id} isAdmin={false} />

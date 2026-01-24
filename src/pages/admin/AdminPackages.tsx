@@ -13,6 +13,7 @@ import { useAdminPackages, getCategoryName, Package, PackageClass } from "@/hook
 import { formatPrice, categories } from "@/data/categories";
 import { Package as PackageIcon, ImageIcon, Plus, Pencil, Trash2, Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { ImageUpload } from "@/components/admin/ImageUpload";
 
 export default function AdminPackages() {
   const { packages, loading, addPackage, updatePackage, deletePackage, toggleVisibility } = useAdminPackages();
@@ -218,24 +219,18 @@ export default function AdminPackages() {
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="image_url">Card Image URL</Label>
-                    <Input
-                      id="image_url"
-                      value={formData.image_url}
-                      onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                      placeholder="https://..."
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="class_image_url">Detail Page Image URL</Label>
-                    <Input
-                      id="class_image_url"
-                      value={formData.class_image_url}
-                      onChange={(e) => setFormData({ ...formData, class_image_url: e.target.value })}
-                      placeholder="https://..."
-                    />
-                  </div>
+                  <ImageUpload
+                    label="Card Image (shown in package list)"
+                    value={formData.image_url}
+                    onChange={(url) => setFormData({ ...formData, image_url: url })}
+                    placeholder="Upload card image"
+                  />
+                  <ImageUpload
+                    label="Detail Page Image (class section)"
+                    value={formData.class_image_url}
+                    onChange={(url) => setFormData({ ...formData, class_image_url: url })}
+                    placeholder="Upload detail image"
+                  />
                 </div>
 
                 <div className="flex items-center gap-2 py-2">

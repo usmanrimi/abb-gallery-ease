@@ -153,6 +153,14 @@ export default function Checkout() {
       const orderPromises = cartItems.map((item) => {
         const sanitizedNotes = item.notes?.trim().slice(0, 1000) || null;
         const sanitizedCustomRequest = item.customRequest?.trim().slice(0, 2000) || null;
+        const isCustomOrder = item.selectedClass?.id === "custom" || !!item.customRequest;
+        
+        // For custom orders, set status to 'pending' (awaiting admin price)
+        // For class-based orders with fixed prices, set status to 'processing' (ready for payment)
+        const orderStatus = isCustomOrder ? "pending" : "processing";
+        const itemTotal = item.unitPrice * item.quantity;
+        const itemDiscount = itemTotal * (selectedPlan?.discount || 0);
+        const itemFinal = itemTotal - itemDiscount;
 
         return supabase.from("orders").insert({
           user_id: user.id,
@@ -161,9 +169,9 @@ export default function Checkout() {
           quantity: item.quantity,
           notes: sanitizedNotes,
           custom_request: sanitizedCustomRequest,
-          total_price: item.unitPrice * item.quantity,
-          final_price: (item.unitPrice * item.quantity) - ((item.unitPrice * item.quantity) * (selectedPlan?.discount || 0)),
-          discount_amount: (item.unitPrice * item.quantity) * (selectedPlan?.discount || 0),
+          total_price: itemTotal,
+          final_price: itemFinal,
+          discount_amount: itemDiscount,
           payment_method: paymentPlan,
           installment_plan: paymentPlan !== "one-time" ? paymentPlan : null,
           delivery_date: deliveryDate || null,
@@ -171,7 +179,7 @@ export default function Checkout() {
           customer_name: sanitizedCustomerName,
           customer_email: sanitizedEmail,
           customer_whatsapp: sanitizedWhatsapp,
-          status: "pending",
+          status: orderStatus,
         });
       });
 
@@ -185,6 +193,11 @@ export default function Checkout() {
       // Clear cart after successful order
       clearCart();
 
+      // Check if any items are custom orders
+      const hasCustomOrders = cartItems.some(
+        (item) => item.selectedClass?.id === "custom" || !!item.customRequest
+      );
+
       navigate("/order-confirmation", {
         state: {
           cartItems,
@@ -195,6 +208,7 @@ export default function Checkout() {
           deliveryTime,
           finalPrice,
           customerInfo,
+          hasCustomOrders,
         },
       });
     } catch (error: any) {
