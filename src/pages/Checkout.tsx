@@ -234,7 +234,7 @@ export default function Checkout() {
           <span className="text-foreground">Checkout</span>
         </nav>
 
-        <h1 className="text-3xl font-bold font-display mb-8">Calculate Your Cost</h1>
+        <h1 className="text-3xl font-bold font-display mb-8">Complete Your Order</h1>
 
         <div className="grid gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
