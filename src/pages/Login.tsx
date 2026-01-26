@@ -6,17 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Mail, Lock, ArrowLeft, User, Shield } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, ArrowLeft } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { useAuth } from "@/contexts/AuthContext";
-import { cn } from "@/lib/utils";
-
-type LoginMode = "customer" | "admin";
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [loginMode, setLoginMode] = useState<LoginMode>("customer");
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -92,36 +88,6 @@ export default function Login() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {/* Login Mode Selector */}
-              <div className="grid grid-cols-2 gap-2 mb-6 p-1 bg-muted rounded-lg">
-                <button
-                  type="button"
-                  onClick={() => setLoginMode("customer")}
-                  className={cn(
-                    "flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-medium transition-all",
-                    loginMode === "customer"
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <User className="h-4 w-4" />
-                  Login as Customer
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLoginMode("admin")}
-                  className={cn(
-                    "flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-medium transition-all",
-                    loginMode === "admin"
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <Shield className="h-4 w-4" />
-                  Login as Admin
-                </button>
-              </div>
-
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">Email Address</Label>
@@ -179,24 +145,16 @@ export default function Login() {
                 </div>
 
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Signing in..." : `Sign In as ${loginMode === "admin" ? "Admin" : "Customer"}`}
+                  {isLoading ? "Signing in..." : "Sign In"}
                 </Button>
               </form>
 
-              {loginMode === "customer" && (
-                <div className="mt-6 text-center text-sm text-muted-foreground">
-                  Don't have an account?{" "}
-                  <Link to="/register" className="text-primary font-medium hover:underline">
-                    Create one
-                  </Link>
-                </div>
-              )}
-
-              {loginMode === "admin" && (
-                <div className="mt-6 text-center text-sm text-muted-foreground">
-                  Admin accounts are created by system administrators.
-                </div>
-              )}
+              <div className="mt-6 text-center text-sm text-muted-foreground">
+                Don't have an account?{" "}
+                <Link to="/register" className="text-primary font-medium hover:underline">
+                  Create one
+                </Link>
+              </div>
             </CardContent>
           </Card>
 
