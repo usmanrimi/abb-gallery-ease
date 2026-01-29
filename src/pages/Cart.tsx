@@ -10,6 +10,11 @@ export default function Cart() {
   const navigate = useNavigate();
   const { items, removeFromCart, updateQuantity, getCartTotal, clearCart } = useCart();
 
+  // Check if any items have custom requests (need admin pricing)
+  const hasCustomRequests = items.some(item => item.customRequest);
+  
+  // For class-based orders (VIP/SPECIAL/STANDARD), go directly to checkout/payment
+  // For custom requests, show "Calculate My Cost" and wait for admin
   const handleProceedToCheckout = () => {
     if (items.length === 0) return;
     
@@ -72,8 +77,13 @@ export default function Cart() {
                             Class: {item.selectedClass.name}
                           </p>
                         )}
+                        {item.customRequest && (
+                          <p className="text-sm text-amber-600">
+                            Custom Request
+                          </p>
+                        )}
                         <p className="text-primary font-semibold mt-1">
-                          {formatPrice(item.unitPrice)}
+                          {item.customRequest ? "Price TBD" : formatPrice(item.unitPrice)}
                         </p>
                         {item.notes && (
                           <p className="text-xs text-muted-foreground mt-1 truncate">
@@ -117,7 +127,7 @@ export default function Cart() {
                         </div>
 
                         <p className="text-sm font-semibold">
-                          {formatPrice(item.unitPrice * item.quantity)}
+                          {item.customRequest ? "Pending" : formatPrice(item.unitPrice * item.quantity)}
                         </p>
                       </div>
                     </div>
@@ -144,19 +154,21 @@ export default function Cart() {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Items ({items.length})</span>
-                      <span>{formatPrice(getCartTotal())}</span>
+                      <span>{hasCustomRequests ? "Price pending" : formatPrice(getCartTotal())}</span>
                     </div>
                   </div>
 
                   <div className="border-t pt-4">
                     <div className="flex justify-between text-lg font-semibold">
                       <span>Total</span>
-                      <span className="text-primary">{formatPrice(getCartTotal())}</span>
+                      <span className="text-primary">
+                        {hasCustomRequests ? "To be calculated" : formatPrice(getCartTotal())}
+                      </span>
                     </div>
                   </div>
 
-                  {/* Show different button based on whether cart has custom requests */}
-                  {items.some(item => item.customRequest) ? (
+                  {/* Different buttons based on order type */}
+                  {hasCustomRequests ? (
                     <Button
                       className="w-full"
                       size="lg"

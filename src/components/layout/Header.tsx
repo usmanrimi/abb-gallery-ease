@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ShoppingBag, User, Menu, X, LogOut } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/logo.png";
 import { useCart } from "@/contexts/CartContext";
@@ -19,7 +19,13 @@ export function Header() {
   const location = useLocation();
   const navigate = useNavigate();
   const { getItemCount } = useCart();
-  const { user, role, signOut } = useAuth();
+  const { user, role, signOut, loading } = useAuth();
+
+  // Force re-render when auth state changes
+  const [, forceUpdate] = useState({});
+  useEffect(() => {
+    forceUpdate({});
+  }, [user, role, loading]);
 
   const navLinks = [
     { href: "/", label: "Home" },
@@ -42,6 +48,9 @@ export function Header() {
       navigate("/dashboard");
     }
   };
+
+  // Determine if user is authenticated (not loading and has user)
+  const isAuthenticated = !loading && !!user;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -83,7 +92,13 @@ export function Header() {
             </Button>
           </Link>
           
-          {user ? (
+          {/* Show loading spinner while checking auth */}
+          {loading ? (
+            <div className="hidden sm:flex h-9 w-9 items-center justify-center">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+            </div>
+          ) : isAuthenticated ? (
+            // User is logged in - show dropdown with profile/logout
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="hidden sm:flex">
@@ -92,7 +107,7 @@ export function Header() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <div className="px-2 py-1.5">
-                  <p className="text-sm font-medium truncate">{user.email}</p>
+                  <p className="text-sm font-medium truncate">{user?.email}</p>
                   <p className="text-xs text-muted-foreground capitalize">{role || "Customer"}</p>
                 </div>
                 <DropdownMenuSeparator />
@@ -110,6 +125,7 @@ export function Header() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
+            // User is NOT logged in - show Sign In button
             <Link to="/login" className="hidden sm:flex">
               <Button size="sm">Sign In</Button>
             </Link>
@@ -153,7 +169,7 @@ export function Header() {
                   Cart {getItemCount() > 0 && `(${getItemCount()})`}
                 </Button>
               </Link>
-              {user ? (
+              {isAuthenticated ? (
                 <>
                   <Button 
                     variant="outline" 
