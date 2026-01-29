@@ -2,7 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ShoppingBag, ArrowRight, Minus, Plus, Trash2, Calculator } from "lucide-react";
+import { ShoppingBag, ArrowRight, Minus, Plus, Trash2, Calculator, CreditCard } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { formatPrice } from "@/data/categories";
 
@@ -155,14 +155,26 @@ export default function Cart() {
                     </div>
                   </div>
 
-                  <Button
-                    className="w-full"
-                    size="lg"
-                    onClick={handleProceedToCheckout}
-                  >
-                    <Calculator className="h-5 w-5 mr-2" />
-                    Calculate My Cost
-                  </Button>
+                  {/* Show different button based on whether cart has custom requests */}
+                  {items.some(item => item.customRequest) ? (
+                    <Button
+                      className="w-full"
+                      size="lg"
+                      onClick={handleProceedToCheckout}
+                    >
+                      <Calculator className="h-5 w-5 mr-2" />
+                      Calculate My Cost
+                    </Button>
+                  ) : (
+                    <Button
+                      className="w-full"
+                      size="lg"
+                      onClick={handleProceedToCheckout}
+                    >
+                      <CreditCard className="h-5 w-5 mr-2" />
+                      Proceed to Checkout
+                    </Button>
+                  )}
 
                   <Link to="/categories" className="block">
                     <Button variant="outline" className="w-full">
