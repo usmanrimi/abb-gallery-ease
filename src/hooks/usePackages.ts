@@ -155,26 +155,9 @@ export function useAdminPackages() {
         .order("created_at", { ascending: true });
 
       if (dbError) {
-        console.error("DB error, using static data:", dbError);
-        // Admin fallback to static packages
-        setPackages(staticPackages.map(p => ({
-          id: p.id,
-          category_id: p.categoryId,
-          name: p.name,
-          description: p.description,
-          image_url: p.image,
-          class_image_url: p.classImage || null,
-          has_classes: p.hasClasses,
-          base_price: p.basePrice || null,
-          starting_price: p.startingPrice || null,
-          is_hidden: false,
-          classes: p.classes?.map(c => ({
-            id: c.id,
-            name: c.name,
-            price: c.price,
-            description: c.description,
-          })),
-        })));
+        console.error("DB error:", dbError);
+        setError(new Error(dbError.message));
+        setPackages([]);
         setLoading(false);
         return;
       }
@@ -201,25 +184,8 @@ export function useAdminPackages() {
 
         setPackages(packagesWithClasses);
       } else {
-        // No packages in DB, use static data
-        setPackages(staticPackages.map(p => ({
-          id: p.id,
-          category_id: p.categoryId,
-          name: p.name,
-          description: p.description,
-          image_url: p.image,
-          class_image_url: p.classImage || null,
-          has_classes: p.hasClasses,
-          base_price: p.basePrice || null,
-          starting_price: p.startingPrice || null,
-          is_hidden: false,
-          classes: p.classes?.map(c => ({
-            id: c.id,
-            name: c.name,
-            price: c.price,
-            description: c.description,
-          })),
-        })));
+        // No packages in DB - admin should create them, don't show static data
+        setPackages([]);
       }
     } catch (err) {
       setError(err as Error);
