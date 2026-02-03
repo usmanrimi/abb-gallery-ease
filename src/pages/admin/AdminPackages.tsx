@@ -15,11 +15,68 @@ import { Package as PackageIcon, ImageIcon, Plus, Pencil, Trash2, Eye, EyeOff, L
 import { toast } from "sonner";
 import { ImageUpload } from "@/components/admin/ImageUpload";
 
+// Seed data for Kayan Sallah packages
+const kayanSallahSeedData = [
+  { name: "Alhaji Babba Package", description: "Premium package for distinguished gentlemen", starting_price: 500000 },
+  { name: "Hajiya Babba Package", description: "Premium package for distinguished ladies", starting_price: 500000 },
+  { name: "Manyan Yara Package", description: "Package for young adults", starting_price: 200000 },
+  { name: "Babban Yaya Package", description: "Package for elder brothers", starting_price: 200000 },
+  { name: "Grandma Package", description: "Special package for grandmothers", starting_price: 100000 },
+  { name: "Marayu Package (Male)", description: "Charity package for orphans (male)", starting_price: 50000 },
+  { name: "Babbar Yaya Package", description: "Package for elder sisters", starting_price: 200000 },
+  { name: "Grandpa Package", description: "Special package for grandfathers", starting_price: 100000 },
+  { name: "Marayu Package (Female)", description: "Charity package for orphans (female)", starting_price: 50000 },
+  { name: "Dan Lele Package", description: "Package for young boys", starting_price: 150000 },
+  { name: "Hadimai Package (Male)", description: "Package for helpers (male)", starting_price: 100000 },
+  { name: "Masses (Male)", description: "Affordable package for men", starting_price: 50000 },
+  { name: "Distribution Package (Male)", description: "Bulk distribution package (male)", starting_price: 50000 },
+  { name: "Hadimai Package (Female)", description: "Package for helpers (female)", starting_price: 100000 },
+  { name: "Masses (Female)", description: "Affordable package for women", starting_price: 50000 },
+  { name: "Distribution Package (Female)", description: "Bulk distribution package (female)", starting_price: 50000 },
+  { name: "Ya Imam Package", description: "Package for religious leaders (Ya Malam)", starting_price: 100000 },
+  { name: "Family Combo Package", description: "Complete family celebration package", starting_price: 350000 },
+  { name: "Iyayen Na Package", description: "Package for parents", starting_price: 200000 },
+  { name: "Yar Lele Package", description: "Package for young girls", starting_price: 150000 },
+  { name: "Babbar Yarinya Package", description: "Package for teenage girls", starting_price: 150000 },
+];
+
 export default function AdminPackages() {
   const { packages, loading, addPackage, updatePackage, deletePackage, toggleVisibility } = useAdminPackages();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSeeding, setIsSeeding] = useState(false);
+
+  const handleSeedKayanSallah = async () => {
+    if (!confirm("This will add all Kayan Sallah packages with VIP, SPECIAL, and STANDARD classes. Continue?")) return;
+    
+    setIsSeeding(true);
+    try {
+      for (const pkg of kayanSallahSeedData) {
+        await addPackage({
+          category_id: "kayan-sallah",
+          name: pkg.name,
+          description: pkg.description,
+          image_url: null,
+          class_image_url: null,
+          has_classes: true,
+          base_price: null,
+          starting_price: pkg.starting_price,
+          classes: [
+            { name: "VIP", price: 350000, description: "Premium quality with luxury items" },
+            { name: "SPECIAL", price: 200000, description: "High quality with selected items" },
+            { name: "STANDARD", price: 50000, description: "Quality items for the family" },
+          ],
+        });
+      }
+      toast.success("All Kayan Sallah packages have been added!");
+    } catch (error) {
+      console.error("Error seeding packages:", error);
+      toast.error("Failed to seed some packages. Please try again.");
+    } finally {
+      setIsSeeding(false);
+    }
+  };
 
   // Form state
   const [formData, setFormData] = useState({
@@ -325,12 +382,18 @@ export default function AdminPackages() {
               <PackageIcon className="h-16 w-16 text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold mb-2">No packages yet</h3>
               <p className="text-muted-foreground mb-4">
-                Start by adding your first package to the catalog.
+                Start by adding your first package to the catalog, or seed Kayan Sallah packages.
               </p>
-              <Button onClick={() => setIsAddDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Package
-              </Button>
+              <div className="flex flex-wrap gap-2 justify-center">
+                <Button onClick={() => setIsAddDialogOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Package
+                </Button>
+                <Button variant="secondary" onClick={handleSeedKayanSallah} disabled={isSeeding}>
+                  {isSeeding && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Seed Kayan Sallah Packages
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ) : (
