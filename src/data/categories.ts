@@ -21,6 +21,10 @@ import babbarYayaClassImg from "@/assets/packages/class/babbar-yaya-class.png";
 import danLeleClassImg from "@/assets/packages/class/dan-lele-class.png";
 import babbarYarinyaClassImg from "@/assets/packages/class/babbar-yarinya-class.png";
 
+// Category images
+import kayanLefeImg from "@/assets/categories/kayan-lefe.png";
+import kayanSallahImg from "@/assets/categories/kayan-sallah.png";
+
 export interface Category {
   id: string;
   name: string;
@@ -55,14 +59,14 @@ export const categories: Category[] = [
     id: "1",
     name: "Kayan Sallah",
     description: "Premium Eid celebration packages with everything you need for a memorable Sallah",
-    image: "/placeholder.svg",
+    image: kayanSallahImg,
     slug: "kayan-sallah",
   },
   {
     id: "2",
     name: "Kayan Lefe",
     description: "Complete wedding packages for the perfect celebration of love",
-    image: "/placeholder.svg",
+    image: kayanLefeImg,
     slug: "kayan-lefe",
   },
   {
