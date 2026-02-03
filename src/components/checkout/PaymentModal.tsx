@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
-import { formatPrice, Package, PackageClass } from "@/data/categories";
+import { formatPrice } from "@/data/categories";
 import { CreditCard, Building2, Copy, Check, Loader2, User, Mail, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,11 +19,29 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { customerInfoSchema } from "@/lib/validations";
 
+interface PackageData {
+  id: string;
+  categoryId: string;
+  name: string;
+  description: string;
+  image: string;
+  hasClasses: boolean;
+  basePrice?: number;
+  startingPrice?: number;
+}
+
+interface ClassData {
+  id: string;
+  name: string;
+  price: number;
+  description: string;
+}
+
 interface PaymentModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  packageData: Package;
-  selectedClass: PackageClass;
+  packageData: PackageData;
+  selectedClass: ClassData;
   quantity: number;
   notes: string;
 }

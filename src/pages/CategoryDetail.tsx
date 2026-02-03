@@ -2,15 +2,18 @@ import { useParams, Link, Navigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { getCategoryBySlug, getPackagesByCategory, categories, formatPrice } from "@/data/categories";
-import { Package, ArrowRight, ChevronRight } from "lucide-react";
+import { getCategoryBySlug, categories, formatPrice } from "@/data/categories";
+import { Package as PackageIcon, ArrowRight, ChevronRight, Loader2 } from "lucide-react";
 import { useCategorySettings } from "@/hooks/useCategorySettings";
+import { usePackages } from "@/hooks/usePackages";
 
 export default function CategoryDetail() {
   const { slug } = useParams<{ slug: string }>();
   const { isComingSoon } = useCategorySettings();
   const category = getCategoryBySlug(slug || "");
-  const categoryPackages = category ? getPackagesByCategory(category.id) : [];
+  
+  // Use database packages instead of static
+  const { packages: categoryPackages, loading } = usePackages(category?.id);
 
   if (!category) {
     return (
@@ -50,67 +53,82 @@ export default function CategoryDetail() {
           </p>
         </div>
 
-        {/* Packages Grid */}
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {categoryPackages.map((pkg, i) => (
-            <Link
-              key={pkg.id}
-              to={`/package/${pkg.id}`}
-              className="group"
-            >
-              <Card
-                variant="interactive"
-                className="overflow-hidden h-full animate-slide-up"
-                style={{ animationDelay: `${i * 0.1}s` }}
+        {/* Loading State */}
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : categoryPackages.length === 0 ? (
+          <div className="text-center py-16">
+            <PackageIcon className="h-16 w-16 text-muted-foreground/40 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No packages available</h3>
+            <p className="text-muted-foreground">
+              Check back soon for new packages in this category.
+            </p>
+          </div>
+        ) : (
+          /* Packages Grid */
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {categoryPackages.map((pkg, i) => (
+              <Link
+                key={pkg.id}
+                to={`/package/${pkg.id}`}
+                className="group"
               >
-                <div className="aspect-[4/3] bg-muted/30 relative overflow-hidden flex items-center justify-center p-2">
-                  {pkg.image && pkg.image !== "/placeholder.svg" ? (
-                    <img
-                      src={pkg.image}
-                      alt={pkg.name}
-                      className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300"
-                    />
-                  ) : (
-                    <Package className="h-16 w-16 text-primary/30" />
-                  )}
-                  {pkg.hasClasses && pkg.classes && (
-                    <div className="absolute top-3 right-3">
-                      <span className="inline-flex items-center rounded-full bg-accent text-accent-foreground px-3 py-1 text-xs font-medium">
-                        {pkg.classes.length} classes
-                      </span>
-                    </div>
-                  )}
-                </div>
-                <CardContent className="p-5">
-                  <h3 className="font-display font-semibold text-lg mb-2">{pkg.name}</h3>
-                  <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                    {pkg.description}
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      {pkg.startingPrice ? (
-                        <span className="text-sm text-muted-foreground">
-                          Starting from{" "}
-                          <span className="text-lg font-semibold text-foreground">
-                            {formatPrice(pkg.startingPrice)}
-                          </span>
+                <Card
+                  variant="interactive"
+                  className="overflow-hidden h-full animate-slide-up"
+                  style={{ animationDelay: `${i * 0.1}s` }}
+                >
+                  <div className="aspect-[4/3] bg-muted/30 relative overflow-hidden flex items-center justify-center p-2">
+                    {pkg.image_url && pkg.image_url !== "/placeholder.svg" ? (
+                      <img
+                        src={pkg.image_url}
+                        alt={pkg.name}
+                        className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <PackageIcon className="h-16 w-16 text-primary/30" />
+                    )}
+                    {pkg.has_classes && pkg.classes && pkg.classes.length > 0 && (
+                      <div className="absolute top-3 right-3">
+                        <span className="inline-flex items-center rounded-full bg-accent text-accent-foreground px-3 py-1 text-xs font-medium">
+                          {pkg.classes.length} classes
                         </span>
-                      ) : pkg.basePrice ? (
-                        <span className="text-lg font-semibold">
-                          {formatPrice(pkg.basePrice)}
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="flex items-center gap-1 text-primary text-sm font-medium">
-                      View
-                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                    </div>
+                      </div>
+                    )}
                   </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
+                  <CardContent className="p-5">
+                    <h3 className="font-display font-semibold text-lg mb-2">{pkg.name}</h3>
+                    <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                      {pkg.description}
+                    </p>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        {pkg.starting_price ? (
+                          <span className="text-sm text-muted-foreground">
+                            Starting from{" "}
+                            <span className="text-lg font-semibold text-foreground">
+                              {formatPrice(pkg.starting_price)}
+                            </span>
+                          </span>
+                        ) : pkg.base_price ? (
+                          <span className="text-lg font-semibold">
+                            {formatPrice(pkg.base_price)}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="flex items-center gap-1 text-primary text-sm font-medium">
+                        View
+                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )}
 
         {/* Other Categories */}
         <div className="mt-16 pt-10 border-t">
@@ -124,8 +142,12 @@ export default function CategoryDetail() {
                   to={`/categories/${cat.slug}`}
                   className="group flex items-center gap-3 p-4 rounded-xl border hover:border-primary/50 hover:bg-muted/50 transition-all"
                 >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <Package className="h-5 w-5" />
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary overflow-hidden">
+                    {cat.image && cat.image !== "/placeholder.svg" ? (
+                      <img src={cat.image} alt={cat.name} className="w-full h-full object-contain" />
+                    ) : (
+                      <PackageIcon className="h-5 w-5" />
+                    )}
                   </div>
                   <div>
                     <h3 className="font-medium group-hover:text-primary transition-colors">

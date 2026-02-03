@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
@@ -6,31 +6,97 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { getPackageById, getCategoryBySlug, categories, formatPrice } from "@/data/categories";
-import { Package, ChevronRight, Minus, Plus, Calculator, Check, ShoppingCart, CreditCard, Loader2 } from "lucide-react";
+import { categories, formatPrice } from "@/data/categories";
+import { Package as PackageIcon, ChevronRight, Minus, Plus, Calculator, Check, ShoppingCart, CreditCard, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { PaymentModal } from "@/components/checkout/PaymentModal";
 import { supabase } from "@/integrations/supabase/client";
+import { Package, PackageClass } from "@/hooks/usePackages";
 
 export default function PackageDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const { user } = useAuth();
-  const pkg = getPackageById(id || "");
-  const category = pkg ? categories.find((c) => c.id === pkg.categoryId) : null;
-
-  const [selectedClass, setSelectedClass] = useState(
-    pkg?.hasClasses && pkg.classes ? pkg.classes[0].id : ""
-  );
+  
+  const [pkg, setPkg] = useState<Package | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedClass, setSelectedClass] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState("");
   const [customRequest, setCustomRequest] = useState("");
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isSubmittingCustom, setIsSubmittingCustom] = useState(false);
+
+  const category = pkg ? categories.find((c) => c.id === pkg.category_id) : null;
+
+  // Fetch package from database
+  useEffect(() => {
+    const fetchPackage = async () => {
+      if (!id) return;
+      
+      setLoading(true);
+      try {
+        const { data: dbPackage, error } = await supabase
+          .from("packages")
+          .select("*")
+          .eq("id", id)
+          .single();
+
+        if (error || !dbPackage) {
+          console.error("Error fetching package:", error);
+          setPkg(null);
+          setLoading(false);
+          return;
+        }
+
+        // Fetch classes
+        const { data: classesData } = await supabase
+          .from("package_classes")
+          .select("*")
+          .eq("package_id", id)
+          .order("sort_order", { ascending: true });
+
+        const packageWithClasses: Package = {
+          ...dbPackage,
+          classes: classesData?.map(c => ({
+            id: c.id,
+            name: c.name,
+            price: Number(c.price),
+            description: c.description || "",
+            sort_order: c.sort_order,
+          })) || [],
+        };
+
+        setPkg(packageWithClasses);
+        
+        // Set default selected class
+        if (packageWithClasses.has_classes && packageWithClasses.classes && packageWithClasses.classes.length > 0) {
+          setSelectedClass(packageWithClasses.classes[0].id);
+        }
+      } catch (err) {
+        console.error("Error:", err);
+        setPkg(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPackage();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="container py-16 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </Layout>
+    );
+  }
 
   if (!pkg || !category) {
     return (
@@ -50,10 +116,10 @@ export default function PackageDetail() {
   
   // For custom, use starting price as base; otherwise use class price or base price
   const unitPrice = isCustomSelected 
-    ? (pkg.startingPrice || 0)
-    : pkg.hasClasses 
-      ? (selectedClassData?.price || pkg.startingPrice || 0)
-      : (pkg.basePrice || 0);
+    ? (pkg.starting_price || 0)
+    : pkg.has_classes 
+      ? (selectedClassData?.price || pkg.starting_price || 0)
+      : (pkg.base_price || 0);
 
   // Handle direct checkout for class orders
   const handleCheckout = () => {
@@ -129,11 +195,30 @@ export default function PackageDetail() {
   };
 
   const handleAddToCart = () => {
+    // Convert database package to cart format
+    const cartPackage = {
+      id: pkg.id,
+      categoryId: pkg.category_id,
+      name: pkg.name,
+      description: pkg.description || "",
+      image: pkg.image_url || "/placeholder.svg",
+      classImage: pkg.class_image_url || undefined,
+      hasClasses: pkg.has_classes,
+      basePrice: pkg.base_price || undefined,
+      startingPrice: pkg.starting_price || undefined,
+      classes: pkg.classes?.map(c => ({
+        id: c.id,
+        name: c.name,
+        price: c.price,
+        description: c.description,
+      })),
+    };
+
     addToCart({
-      package: pkg,
+      package: cartPackage,
       selectedClass: isCustomSelected 
         ? { id: "custom", name: "Custom", price: unitPrice, description: "Custom request" } 
-        : pkg.hasClasses ? selectedClassData : undefined,
+        : pkg.has_classes ? selectedClassData : undefined,
       quantity,
       notes,
       unitPrice,
@@ -143,7 +228,7 @@ export default function PackageDetail() {
   };
 
   // Determine which image to show in the class section - use classImage if available
-  const classDisplayImage = pkg.classImage || pkg.image;
+  const classDisplayImage = pkg.class_image_url || pkg.image_url;
 
   return (
     <Layout>
@@ -175,7 +260,7 @@ export default function PackageDetail() {
                 />
               ) : (
                 <div className="aspect-square w-full flex items-center justify-center">
-                  <Package className="h-32 w-32 text-primary/30" />
+                  <PackageIcon className="h-32 w-32 text-primary/30" />
                 </div>
               )}
             </div>
@@ -196,20 +281,20 @@ export default function PackageDetail() {
             </p>
 
             {/* Show price based on package type */}
-            {pkg.hasClasses && pkg.startingPrice ? (
+            {pkg.has_classes && pkg.starting_price ? (
               <p className="text-xl font-semibold text-primary mb-6">
-                Starting from {formatPrice(pkg.startingPrice)}
+                Starting from {formatPrice(pkg.starting_price)}
               </p>
-            ) : pkg.basePrice ? (
+            ) : pkg.base_price ? (
               <p className="text-xl font-semibold text-primary mb-6">
-                {formatPrice(pkg.basePrice)}
+                {formatPrice(pkg.base_price)}
               </p>
             ) : null}
 
             <Card className="mb-6">
               <CardContent className="p-6 space-y-6">
                 {/* Class Selection - Only for packages with classes */}
-                {pkg.hasClasses && pkg.classes && (
+                {pkg.has_classes && pkg.classes && pkg.classes.length > 0 && (
                   <div className="space-y-3">
                     <Label className="text-base font-semibold">Select Class</Label>
                     <RadioGroup
@@ -300,10 +385,10 @@ export default function PackageDetail() {
                 )}
 
                 {/* Fixed Price Display for non-class packages */}
-                {!pkg.hasClasses && pkg.basePrice && (
+                {!pkg.has_classes && pkg.base_price && (
                   <div className="text-center p-4 rounded-xl bg-primary/5 border-2 border-primary">
                     <p className="text-sm text-muted-foreground mb-1">Fixed Price</p>
-                    <p className="text-2xl font-bold text-primary">{formatPrice(pkg.basePrice)}</p>
+                    <p className="text-2xl font-bold text-primary">{formatPrice(pkg.base_price)}</p>
                   </div>
                 )}
 
@@ -417,7 +502,16 @@ export default function PackageDetail() {
         <PaymentModal
           open={isPaymentModalOpen}
           onOpenChange={setIsPaymentModalOpen}
-          packageData={pkg}
+          packageData={{
+            id: pkg.id,
+            categoryId: pkg.category_id,
+            name: pkg.name,
+            description: pkg.description || "",
+            image: pkg.image_url || "/placeholder.svg",
+            hasClasses: pkg.has_classes,
+            basePrice: pkg.base_price || undefined,
+            startingPrice: pkg.starting_price || undefined,
+          }}
           selectedClass={selectedClassData}
           quantity={quantity}
           notes={notes}

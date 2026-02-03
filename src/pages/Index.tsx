@@ -3,7 +3,7 @@ import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { categories } from "@/data/categories";
-import { ArrowRight, Package, Truck, CreditCard, Shield, Star, ChevronRight, Home, Store } from "lucide-react";
+import { ArrowRight, Package as PackageIcon, Truck, CreditCard, Star, ChevronRight, Home, Store } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { useCategorySettings } from "@/hooks/useCategorySettings";
 
@@ -54,17 +54,22 @@ const Index = () => {
                 <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
                     {categories.slice(0, 4).map((cat, i) => {
                       const comingSoon = isComingSoon(cat.slug);
+                      const hasImage = cat.image && cat.image !== "/placeholder.svg";
                       
                       if (comingSoon) {
                         return (
                           <div
                             key={cat.id}
-                            className="aspect-square rounded-2xl bg-card shadow-elevated p-4 flex flex-col items-center justify-center text-center animate-float opacity-60 relative cursor-not-allowed"
+                            className="aspect-square rounded-2xl bg-card shadow-elevated overflow-hidden flex flex-col items-center justify-center text-center animate-float opacity-60 relative cursor-not-allowed"
                             style={{ animationDelay: `${i * 0.2}s` }}
                             onClick={() => alert("Coming Soon")}
                           >
-                            <Package className="h-8 w-8 text-muted-foreground mb-2" />
-                            <span className="text-sm font-medium line-clamp-2 text-muted-foreground">{cat.name}</span>
+                            {hasImage ? (
+                              <img src={cat.image} alt={cat.name} className="absolute inset-0 w-full h-full object-contain p-2" />
+                            ) : (
+                              <PackageIcon className="h-8 w-8 text-muted-foreground mb-2" />
+                            )}
+                            <span className="absolute bottom-2 left-2 right-2 text-sm font-medium line-clamp-2 text-muted-foreground bg-background/80 rounded px-1">{cat.name}</span>
                             <span className="absolute top-2 right-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">Coming Soon</span>
                           </div>
                         );
@@ -74,11 +79,15 @@ const Index = () => {
                         <Link
                           key={cat.id}
                           to={`/categories/${cat.slug}`}
-                          className="aspect-square rounded-2xl bg-card shadow-elevated p-4 flex flex-col items-center justify-center text-center animate-float hover:scale-105 transition-transform cursor-pointer"
+                          className="aspect-square rounded-2xl bg-card shadow-elevated overflow-hidden flex flex-col items-center justify-center text-center animate-float hover:scale-105 transition-transform cursor-pointer relative"
                           style={{ animationDelay: `${i * 0.2}s` }}
                         >
-                          <Package className="h-8 w-8 text-primary mb-2" />
-                          <span className="text-sm font-medium line-clamp-2">{cat.name}</span>
+                          {hasImage ? (
+                            <img src={cat.image} alt={cat.name} className="absolute inset-0 w-full h-full object-contain p-2" />
+                          ) : (
+                            <PackageIcon className="h-8 w-8 text-primary mb-2" />
+                          )}
+                          <span className="absolute bottom-2 left-2 right-2 text-sm font-medium line-clamp-2 bg-background/80 rounded px-1">{cat.name}</span>
                         </Link>
                       );
                     })}
@@ -95,7 +104,7 @@ const Index = () => {
         <div className="container py-12">
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
             {[
-              { icon: Package, title: "Quality Packages", desc: "Curated premium items" },
+              { icon: PackageIcon, title: "Quality Packages", desc: "Curated premium items" },
               { icon: Truck, title: "Fast Delivery", desc: "To your doorstep" },
               { icon: CreditCard, title: "Easy Payments", desc: "Flexible installments" },
               { icon: Home, title: "Home Services", desc: "Free and Past" },
@@ -150,10 +159,16 @@ const Index = () => {
                       className="overflow-hidden animate-slide-up opacity-60"
                       style={{ animationDelay: `${i * 0.1}s` }}
                     >
-                      <div className="aspect-[4/3] bg-gradient-to-br from-muted/30 to-muted/10 relative overflow-hidden">
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <Package className="h-16 w-16 text-muted-foreground/40" />
-                        </div>
+                      <div className="aspect-[4/3] bg-gradient-to-br from-muted/30 to-muted/10 relative overflow-hidden flex items-center justify-center">
+                        {category.image && category.image !== "/placeholder.svg" ? (
+                          <img 
+                            src={category.image} 
+                            alt={category.name}
+                            className="max-w-full max-h-full object-contain p-2"
+                          />
+                        ) : (
+                          <PackageIcon className="h-16 w-16 text-muted-foreground/40" />
+                        )}
                         <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
                         <div className="absolute bottom-4 left-4 right-4">
                           <h3 className="font-display font-semibold text-lg text-muted-foreground">{category.name}</h3>
@@ -186,10 +201,16 @@ const Index = () => {
                     className="overflow-hidden animate-slide-up"
                     style={{ animationDelay: `${i * 0.1}s` }}
                   >
-                    <div className="aspect-[4/3] bg-gradient-to-br from-primary/10 to-accent/10 relative overflow-hidden">
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <Package className="h-16 w-16 text-primary/40" />
-                      </div>
+                    <div className="aspect-[4/3] bg-gradient-to-br from-primary/10 to-accent/10 relative overflow-hidden flex items-center justify-center">
+                      {category.image && category.image !== "/placeholder.svg" ? (
+                        <img 
+                          src={category.image} 
+                          alt={category.name}
+                          className="max-w-full max-h-full object-contain p-2 group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <PackageIcon className="h-16 w-16 text-primary/40" />
+                      )}
                       <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
                       <div className="absolute bottom-4 left-4 right-4">
                         <h3 className="font-display font-semibold text-lg">{category.name}</h3>
