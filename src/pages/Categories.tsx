@@ -3,8 +3,11 @@ import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { categories } from "@/data/categories";
 import { Package, ArrowRight } from "lucide-react";
+import { useCategorySettings } from "@/hooks/useCategorySettings";
 
 export default function Categories() {
+  const { isComingSoon } = useCategorySettings();
+
   return (
     <Layout>
       <div className="container py-8 md:py-12">
@@ -24,9 +27,9 @@ export default function Categories() {
 
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {categories.map((category, i) => {
-            const isComingSoon = category.slug === "seasonal" || category.slug === "haihuwa";
+            const comingSoon = isComingSoon(category.slug);
             
-            if (isComingSoon) {
+            if (comingSoon) {
               return (
                 <div
                   key={category.id}

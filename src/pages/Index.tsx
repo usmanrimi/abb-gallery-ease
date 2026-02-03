@@ -5,8 +5,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { categories } from "@/data/categories";
 import { ArrowRight, Package, Truck, CreditCard, Shield, Star, ChevronRight, Home, Store } from "lucide-react";
 import logo from "@/assets/logo.png";
+import { useCategorySettings } from "@/hooks/useCategorySettings";
 
 const Index = () => {
+  const { isComingSoon } = useCategorySettings();
+
   return (
     <Layout>
       {/* Hero Section */}
@@ -50,13 +53,13 @@ const Index = () => {
                 <div className="relative h-full w-full flex items-center justify-center">
                 <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
                     {categories.slice(0, 4).map((cat, i) => {
-                      const isComingSoon = cat.slug === "seasonal" || cat.slug === "haihuwa";
+                      const comingSoon = isComingSoon(cat.slug);
                       
-                      if (isComingSoon) {
+                      if (comingSoon) {
                         return (
                           <div
                             key={cat.id}
-                            className="aspect-square rounded-2xl bg-card shadow-elevated p-4 flex flex-col items-center justify-center text-center animate-float opacity-60 relative"
+                            className="aspect-square rounded-2xl bg-card shadow-elevated p-4 flex flex-col items-center justify-center text-center animate-float opacity-60 relative cursor-not-allowed"
                             style={{ animationDelay: `${i * 0.2}s` }}
                             onClick={() => alert("Coming Soon")}
                           >
@@ -134,9 +137,9 @@ const Index = () => {
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {categories.map((category, i) => {
-              const isComingSoon = category.slug === "seasonal" || category.slug === "haihuwa";
+              const comingSoon = isComingSoon(category.slug);
               
-              if (isComingSoon) {
+              if (comingSoon) {
                 return (
                   <div
                     key={category.id}

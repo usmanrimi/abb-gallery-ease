@@ -7,15 +7,19 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { getPackageById, getCategoryBySlug, categories, formatPrice } from "@/data/categories";
-import { Package, ChevronRight, Minus, Plus, Calculator, Check, ShoppingCart } from "lucide-react";
+import { Package, ChevronRight, Minus, Plus, Calculator, Check, ShoppingCart, CreditCard, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/contexts/CartContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { PaymentModal } from "@/components/checkout/PaymentModal";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function PackageDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { addToCart } = useCart();
+  const { user } = useAuth();
   const pkg = getPackageById(id || "");
   const category = pkg ? categories.find((c) => c.id === pkg.categoryId) : null;
 
@@ -25,6 +29,8 @@ export default function PackageDetail() {
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState("");
   const [customRequest, setCustomRequest] = useState("");
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [isSubmittingCustom, setIsSubmittingCustom] = useState(false);
 
   if (!pkg || !category) {
     return (
@@ -49,17 +55,77 @@ export default function PackageDetail() {
       ? (selectedClassData?.price || pkg.startingPrice || 0)
       : (pkg.basePrice || 0);
 
-  const handleCalculateCost = () => {
-    navigate("/checkout", {
-      state: {
-        package: pkg,
-        selectedClass: isCustomSelected ? { id: "custom", name: "Custom", price: unitPrice, description: customRequest } : selectedClassData,
+  // Handle direct checkout for class orders
+  const handleCheckout = () => {
+    if (!user) {
+      toast.error("Please login to checkout");
+      navigate("/login", { state: { from: location } });
+      return;
+    }
+    setIsPaymentModalOpen(true);
+  };
+
+  // Handle custom order - Calculate Cost flow
+  const handleCalculateCost = async () => {
+    if (!customRequest.trim()) {
+      toast.error("Please describe what you want");
+      return;
+    }
+
+    if (!user) {
+      toast.error("Please login to submit your request");
+      navigate("/login", { state: { from: location } });
+      return;
+    }
+
+    setIsSubmittingCustom(true);
+
+    try {
+      // Create order with 'pending' status (waiting for admin price)
+      const { error } = await supabase.from("orders").insert({
+        user_id: user.id,
+        package_name: pkg.name,
+        package_class: "Custom",
         quantity,
-        notes,
-        unitPrice,
-        customRequest: isCustomSelected ? customRequest : undefined,
-      },
-    });
+        notes: notes || null,
+        custom_request: customRequest.trim(),
+        total_price: 0, // Admin will set this
+        final_price: 0,
+        discount_amount: 0,
+        payment_method: "pending",
+        customer_name: user.email?.split("@")[0] || "Customer",
+        customer_email: user.email || "",
+        customer_whatsapp: "",
+        status: "pending", // Waiting for admin
+      });
+
+      if (error) throw error;
+
+      toast.success("Custom request submitted! Waiting for admin to set price.");
+      
+      navigate("/order-confirmation", {
+        state: {
+          cartItems: [{
+            id: `${pkg.id}-custom-${Date.now()}`,
+            package: pkg,
+            selectedClass: { id: "custom", name: "Custom", price: 0, description: customRequest },
+            quantity,
+            notes,
+            unitPrice: 0,
+            customRequest,
+          }],
+          totalPrice: 0,
+          finalPrice: 0,
+          paymentMethod: "pending",
+          hasCustomOrders: true,
+        },
+      });
+    } catch (error: any) {
+      console.error("Error submitting custom order:", error);
+      toast.error(error.message || "Failed to submit request");
+    } finally {
+      setIsSubmittingCustom(false);
+    }
   };
 
   const handleAddToCart = () => {
@@ -213,8 +279,8 @@ export default function PackageDetail() {
                     {/* Custom Request Text Area */}
                     {isCustomSelected && (
                       <div className="space-y-2 pt-2">
-                        <Label htmlFor="customRequest" className="text-sm font-medium">
-                          Describe what you want
+                        <Label htmlFor="customRequest" className="text-sm font-medium text-primary">
+                          Describe what you want *
                         </Label>
                         <Textarea
                           id="customRequest"
@@ -223,7 +289,11 @@ export default function PackageDetail() {
                           onChange={(e) => setCustomRequest(e.target.value)}
                           rows={4}
                           className="border-primary/30"
+                          required
                         />
+                        <p className="text-xs text-muted-foreground">
+                          Admin will review and send you the final price
+                        </p>
                       </div>
                     )}
                   </div>
@@ -278,27 +348,50 @@ export default function PackageDetail() {
               </CardContent>
             </Card>
 
-            {/* Actions */}
+            {/* Actions - Different buttons based on selection */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 p-6 rounded-xl bg-muted/50">
-              <Button
-                variant="outline"
-                size="lg"
-                className="w-full sm:w-auto"
-                onClick={handleAddToCart}
-                disabled={isCustomSelected && !customRequest.trim()}
-              >
-                <ShoppingCart className="h-5 w-5 mr-2" />
-                Add to Cart
-              </Button>
-              <Button
-                size="lg"
-                className="w-full sm:w-auto"
-                onClick={handleCalculateCost}
-                disabled={isCustomSelected && !customRequest.trim()}
-              >
-                <Calculator className="h-5 w-5 mr-2" />
-                Calculate My Cost
-              </Button>
+              {isCustomSelected ? (
+                // Custom flow: Show Calculate Cost button only
+                <Button
+                  size="lg"
+                  className="w-full sm:w-auto"
+                  onClick={handleCalculateCost}
+                  disabled={!customRequest.trim() || isSubmittingCustom}
+                >
+                  {isSubmittingCustom ? (
+                    <>
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <Calculator className="h-5 w-5 mr-2" />
+                      Calculate My Cost
+                    </>
+                  )}
+                </Button>
+              ) : (
+                // Class flow: Show Checkout and Add to Cart buttons
+                <>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="w-full sm:w-auto"
+                    onClick={handleAddToCart}
+                  >
+                    <ShoppingCart className="h-5 w-5 mr-2" />
+                    Add to Cart
+                  </Button>
+                  <Button
+                    size="lg"
+                    className="w-full sm:w-auto"
+                    onClick={handleCheckout}
+                  >
+                    <CreditCard className="h-5 w-5 mr-2" />
+                    Checkout - {formatPrice(unitPrice * quantity)}
+                  </Button>
+                </>
+              )}
             </div>
 
             {/* Features */}
@@ -318,6 +411,18 @@ export default function PackageDetail() {
           </div>
         </div>
       </div>
+
+      {/* Payment Modal for class orders */}
+      {selectedClassData && (
+        <PaymentModal
+          open={isPaymentModalOpen}
+          onOpenChange={setIsPaymentModalOpen}
+          packageData={pkg}
+          selectedClass={selectedClassData}
+          quantity={quantity}
+          notes={notes}
+        />
+      )}
     </Layout>
   );
 }
