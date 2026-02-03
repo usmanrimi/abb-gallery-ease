@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      category_settings: {
+        Row: {
+          category_slug: string
+          coming_soon: boolean
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          category_slug: string
+          coming_soon?: boolean
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          category_slug?: string
+          coming_soon?: boolean
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string

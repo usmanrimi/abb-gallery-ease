@@ -51,12 +51,20 @@ const App = () => (
             <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/categories" element={<Categories />} />
             <Route path="/categories/:slug" element={<CategoryDetail />} />
-            <Route path="/package/:id" element={<PackageDetail />} />
-            <Route path="/cart" element={<Cart />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             
             {/* Protected Routes - Require Login */}
+            <Route path="/package/:id" element={
+              <ProtectedRoute>
+                <PackageDetail />
+              </ProtectedRoute>
+            } />
+            <Route path="/cart" element={
+              <ProtectedRoute>
+                <Cart />
+              </ProtectedRoute>
+            } />
             <Route path="/checkout" element={
               <ProtectedRoute>
                 <Checkout />

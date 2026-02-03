@@ -1,12 +1,14 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, Navigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getCategoryBySlug, getPackagesByCategory, categories, formatPrice } from "@/data/categories";
 import { Package, ArrowRight, ChevronRight } from "lucide-react";
+import { useCategorySettings } from "@/hooks/useCategorySettings";
 
 export default function CategoryDetail() {
   const { slug } = useParams<{ slug: string }>();
+  const { isComingSoon } = useCategorySettings();
   const category = getCategoryBySlug(slug || "");
   const categoryPackages = category ? getPackagesByCategory(category.id) : [];
 
@@ -21,6 +23,11 @@ export default function CategoryDetail() {
         </div>
       </Layout>
     );
+  }
+
+  // Redirect if category is Coming Soon
+  if (isComingSoon(category.slug)) {
+    return <Navigate to="/categories" replace />;
   }
 
   return (
@@ -110,7 +117,7 @@ export default function CategoryDetail() {
           <h2 className="text-xl font-display font-semibold mb-6">Other Categories</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {categories
-              .filter((c) => c.id !== category.id)
+              .filter((c) => c.id !== category.id && !isComingSoon(c.slug))
               .map((cat) => (
                 <Link
                   key={cat.id}
