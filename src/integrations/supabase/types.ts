@@ -35,6 +35,62 @@ export type Database = {
         }
         Relationships: []
       }
+      deliveries: {
+        Row: {
+          created_at: string
+          custom_order_id: string | null
+          customer_name: string
+          customer_whatsapp: string
+          delivery_address: string | null
+          delivery_date: string | null
+          delivery_notes: string | null
+          delivery_time: string | null
+          id: string
+          order_id: string
+          package_name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          custom_order_id?: string | null
+          customer_name: string
+          customer_whatsapp: string
+          delivery_address?: string | null
+          delivery_date?: string | null
+          delivery_notes?: string | null
+          delivery_time?: string | null
+          id?: string
+          order_id: string
+          package_name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          custom_order_id?: string | null
+          customer_name?: string
+          customer_whatsapp?: string
+          delivery_address?: string | null
+          delivery_date?: string | null
+          delivery_notes?: string | null
+          delivery_time?: string | null
+          id?: string
+          order_id?: string
+          package_name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deliveries_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -119,11 +175,14 @@ export type Database = {
           admin_response: string | null
           admin_set_price: number | null
           created_at: string
+          custom_order_id: string | null
           custom_request: string | null
           customer_email: string
           customer_name: string
           customer_whatsapp: string
+          delivery_address: string | null
           delivery_date: string | null
+          delivery_notes: string | null
           delivery_time: string | null
           discount_amount: number | null
           final_price: number
@@ -133,6 +192,12 @@ export type Database = {
           package_class: string | null
           package_name: string
           payment_method: string
+          payment_proof_type: string | null
+          payment_proof_url: string | null
+          payment_reference: string | null
+          payment_status: string | null
+          payment_verified_at: string | null
+          payment_verified_by: string | null
           quantity: number
           status: string
           total_price: number
@@ -143,11 +208,14 @@ export type Database = {
           admin_response?: string | null
           admin_set_price?: number | null
           created_at?: string
+          custom_order_id?: string | null
           custom_request?: string | null
           customer_email: string
           customer_name: string
           customer_whatsapp: string
+          delivery_address?: string | null
           delivery_date?: string | null
+          delivery_notes?: string | null
           delivery_time?: string | null
           discount_amount?: number | null
           final_price: number
@@ -157,6 +225,12 @@ export type Database = {
           package_class?: string | null
           package_name: string
           payment_method: string
+          payment_proof_type?: string | null
+          payment_proof_url?: string | null
+          payment_reference?: string | null
+          payment_status?: string | null
+          payment_verified_at?: string | null
+          payment_verified_by?: string | null
           quantity?: number
           status?: string
           total_price: number
@@ -167,11 +241,14 @@ export type Database = {
           admin_response?: string | null
           admin_set_price?: number | null
           created_at?: string
+          custom_order_id?: string | null
           custom_request?: string | null
           customer_email?: string
           customer_name?: string
           customer_whatsapp?: string
+          delivery_address?: string | null
           delivery_date?: string | null
+          delivery_notes?: string | null
           delivery_time?: string | null
           discount_amount?: number | null
           final_price?: number
@@ -181,6 +258,12 @@ export type Database = {
           package_class?: string | null
           package_name?: string
           payment_method?: string
+          payment_proof_type?: string | null
+          payment_proof_url?: string | null
+          payment_reference?: string | null
+          payment_status?: string | null
+          payment_verified_at?: string | null
+          payment_verified_by?: string | null
           quantity?: number
           status?: string
           total_price?: number
@@ -349,6 +432,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_custom_order_id: { Args: never; Returns: string }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]

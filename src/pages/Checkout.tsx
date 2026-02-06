@@ -155,9 +155,10 @@ export default function Checkout() {
         const sanitizedCustomRequest = item.customRequest?.trim().slice(0, 2000) || null;
         const isCustomOrder = item.selectedClass?.id === "custom" || !!item.customRequest;
         
-        // For custom orders, set status to 'pending' (awaiting admin price)
-        // For class-based orders with fixed prices, set status to 'processing' (ready for payment)
-        const orderStatus = isCustomOrder ? "pending" : "processing";
+        // For custom orders, set status to 'waiting_for_price' (awaiting admin price)
+        // For class-based orders with fixed prices, set status to 'pending_payment'
+        const orderStatus = isCustomOrder ? "waiting_for_price" : "pending_payment";
+        const paymentStatus = isCustomOrder ? "waiting_for_price" : "pending_payment";
         const itemTotal = item.unitPrice * item.quantity;
         const itemDiscount = itemTotal * (selectedPlan?.discount || 0);
         const itemFinal = itemTotal - itemDiscount;
@@ -173,6 +174,7 @@ export default function Checkout() {
           final_price: itemFinal,
           discount_amount: itemDiscount,
           payment_method: paymentPlan,
+          payment_status: paymentStatus,
           installment_plan: paymentPlan !== "one-time" ? paymentPlan : null,
           delivery_date: deliveryDate || null,
           delivery_time: sanitizedDeliveryTime,

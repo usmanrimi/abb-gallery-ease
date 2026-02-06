@@ -5,15 +5,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Package, Clock, CheckCircle2, Truck, ChevronRight, MessageCircle, Loader2 } from "lucide-react";
+import { Package, Clock, CheckCircle2, Truck, ChevronRight, MessageCircle, Loader2, CreditCard, Upload } from "lucide-react";
 import { formatPrice } from "@/data/categories";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { OrderChat } from "@/components/order/OrderChat";
 import { PaymentInstructions } from "@/components/order/PaymentInstructions";
+import { PaymentProofUpload } from "@/components/order/PaymentProofUpload";
 
 interface Order {
   id: string;
+  custom_order_id: string | null;
   package_name: string;
   package_class: string | null;
   quantity: number;
@@ -21,35 +23,79 @@ interface Order {
   final_price: number;
   admin_set_price: number | null;
   status: string;
+  payment_status: string | null;
+  payment_proof_url: string | null;
   created_at: string;
   admin_response: string | null;
   custom_request: string | null;
 }
 
-const statusConfig = {
-  pending: {
-    label: "Pending Admin Response",
+const statusConfig: Record<string, { label: string; icon: any; variant: "default" | "secondary" | "destructive" | "outline"; description: string }> = {
+  pending_payment: {
+    label: "Pending Payment",
+    icon: CreditCard,
+    variant: "outline",
+    description: "Complete payment to proceed",
+  },
+  waiting_for_price: {
+    label: "Waiting for Price",
     icon: Clock,
-    variant: "secondary" as const,
-    description: "Awaiting admin to set your price",
+    variant: "outline",
+    description: "Admin is reviewing your custom request",
+  },
+  price_sent: {
+    label: "Price Sent",
+    icon: CreditCard,
+    variant: "secondary",
+    description: "Review the price and make payment",
+  },
+  paid: {
+    label: "Paid",
+    icon: CheckCircle2,
+    variant: "default",
+    description: "Payment confirmed, preparing your order",
   },
   processing: {
-    label: "Awaiting Payment",
+    label: "Processing",
     icon: Package,
-    variant: "default" as const,
-    description: "Please transfer to complete your order",
+    variant: "secondary",
+    description: "Your order is being prepared",
+  },
+  ready_for_delivery: {
+    label: "Ready for Delivery",
+    icon: Truck,
+    variant: "default",
+    description: "Your order is ready for dispatch",
+  },
+  out_for_delivery: {
+    label: "Out for Delivery",
+    icon: Truck,
+    variant: "default",
+    description: "Your order is on its way!",
+  },
+  delivered: {
+    label: "Delivered",
+    icon: CheckCircle2,
+    variant: "default",
+    description: "Order completed",
+  },
+  cancelled: {
+    label: "Cancelled",
+    icon: Clock,
+    variant: "destructive",
+    description: "Order was cancelled",
+  },
+  pending: {
+    label: "Pending",
+    icon: Clock,
+    variant: "outline",
+    description: "Awaiting processing",
   },
   confirmed: {
     label: "Confirmed",
     icon: CheckCircle2,
-    variant: "default" as const,
-    description: "Payment confirmed, preparing your order",
-  },
-  delivered: {
-    label: "Delivered",
-    icon: Truck,
-    variant: "outline" as const,
-    description: "Order completed",
+    variant: "default",
+    description: "Payment confirmed",
   },
 };
 
@@ -139,6 +185,9 @@ export default function Orders() {
               const status = statusConfig[order.status as keyof typeof statusConfig] || statusConfig.pending;
               const StatusIcon = status.icon;
               const displayPrice = getDisplayPrice(order);
+              const showPaymentUpload = 
+                (order.status === "pending_payment" || order.status === "processing" || order.status === "price_sent") &&
+                !order.payment_proof_url;
 
               return (
                 <Card
@@ -151,13 +200,19 @@ export default function Orders() {
                     <div className="flex flex-col md:flex-row md:items-start gap-4">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2 flex-wrap">
-                          <span className="font-mono text-sm text-muted-foreground">
-                            {order.id.slice(0, 8).toUpperCase()}
+                          <span className="font-mono text-sm text-primary font-semibold">
+                            {order.custom_order_id || order.id.slice(0, 8).toUpperCase()}
                           </span>
                           <Badge variant={status.variant}>
                             <StatusIcon className="h-3 w-3 mr-1" />
                             {status.label}
                           </Badge>
+                          {order.payment_status === "proof_uploaded" && (
+                            <Badge variant="outline" className="text-xs">
+                              <Upload className="h-3 w-3 mr-1" />
+                              Proof Sent
+                            </Badge>
+                          )}
                         </div>
                         <h3 className="font-semibold text-lg">{order.package_name}</h3>
                         <p className="text-sm text-muted-foreground">
@@ -204,6 +259,9 @@ export default function Orders() {
                             </DialogHeader>
                             <div className="space-y-4">
                               <div className="p-4 rounded-lg bg-muted/50">
+                                <p className="font-mono text-sm text-primary font-semibold mb-2">
+                                  {order.custom_order_id || order.id.slice(0, 8).toUpperCase()}
+                                </p>
                                 <h4 className="font-semibold mb-2">{order.package_name}</h4>
                                 {order.package_class && (
                                   <p className="text-sm text-muted-foreground">Class: {order.package_class}</p>
@@ -211,23 +269,35 @@ export default function Orders() {
                                 <p className="text-sm text-muted-foreground">Quantity: {order.quantity}</p>
                                 {order.custom_request && (
                                   <div className="mt-2 p-2 rounded bg-amber-500/10 border border-amber-500/20">
-                                    <p className="text-xs text-amber-600 font-medium">Custom Request:</p>
+                                    <p className="text-xs font-medium">Custom Request:</p>
                                     <p className="text-sm">{order.custom_request}</p>
                                   </div>
                                 )}
                                 <p className="font-semibold text-primary mt-2">{formatPrice(displayPrice)}</p>
                               </div>
 
-                              {/* Show payment instructions only if not pending (custom awaiting price) */}
-                              {order.status !== "pending" && (
-                                <PaymentInstructions amount={displayPrice} />
+                              {/* Show payment instructions and upload for orders awaiting payment */}
+                              {showPaymentUpload && (
+                                <>
+                                  <PaymentInstructions amount={displayPrice} />
+                                  <PaymentProofUpload orderId={order.id} onUploadComplete={fetchOrders} />
+                                </>
                               )}
 
-                              {/* Pending custom order message */}
-                              {order.status === "pending" && order.custom_request && (
+                              {/* Waiting for admin price message */}
+                              {order.status === "waiting_for_price" && (
                                 <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
                                   <p className="text-sm text-amber-700 text-center">
-                                    Admin is reviewing your custom request. You'll receive the final price and payment instructions soon.
+                                    Admin is reviewing your custom request. You'll receive the final price soon.
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* Proof uploaded message */}
+                              {order.payment_status === "proof_uploaded" && (
+                                <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                                  <p className="text-sm text-blue-700 text-center">
+                                    Payment proof uploaded. Admin will verify and confirm shortly.
                                   </p>
                                 </div>
                               )}

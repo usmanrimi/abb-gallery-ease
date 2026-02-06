@@ -135,8 +135,10 @@ export function PaymentModal({
     setIsSubmitting(true);
 
     try {
-      // Create order with 'processing' status (ready for payment)
-      const { error } = await supabase.from("orders").insert({
+      // Create order with appropriate status
+      const orderStatus = paymentMethod === "card" ? "pending_payment" : "pending_payment";
+      
+      const { data: orderData, error } = await supabase.from("orders").insert({
         user_id: user.id,
         package_name: packageData.name,
         package_class: selectedClass.name,
@@ -146,13 +148,54 @@ export function PaymentModal({
         final_price: totalAmount,
         discount_amount: 0,
         payment_method: paymentMethod,
+        payment_status: "pending_payment",
         customer_name: customerInfo.fullName.trim(),
         customer_email: customerInfo.email.trim().toLowerCase(),
         customer_whatsapp: customerInfo.whatsappNumber.trim(),
-        status: "processing", // Ready for payment
-      });
+        status: orderStatus,
+      }).select().single();
 
       if (error) throw error;
+
+      if (paymentMethod === "card" && orderData) {
+        // Initialize Paystack payment
+        try {
+          const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/paystack`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+              },
+              body: JSON.stringify({
+                action: "initialize",
+                email: customerInfo.email.trim().toLowerCase(),
+                amount: totalAmount,
+                orderId: orderData.id,
+                metadata: {
+                  customer_name: customerInfo.fullName,
+                  package_name: packageData.name,
+                },
+              }),
+            }
+          );
+
+          const result = await response.json();
+
+          if (result.error) {
+            // Paystack not configured, fall back to bank transfer
+            toast.info(result.message || "Card payment not available. Please use bank transfer.");
+          } else if (result.authorization_url) {
+            // Redirect to Paystack
+            window.location.href = result.authorization_url;
+            return;
+          }
+        } catch (paystackError) {
+          console.error("Paystack error:", paystackError);
+          toast.info("Card payment unavailable. Your order has been created for bank transfer.");
+        }
+      }
 
       toast.success("Order submitted successfully!");
       onOpenChange(false);
