@@ -24,10 +24,12 @@ interface DashboardStats {
 
 interface RecentOrder {
   id: string;
+  custom_order_id: string | null;
   package_name: string;
   customer_name: string;
   final_price: number;
   status: string;
+  payment_status: string | null;
   created_at: string;
 }
 
@@ -51,14 +53,26 @@ export default function AdminDashboard() {
       // Fetch all orders for stats
       const { data: orders } = await supabase
         .from("orders")
-        .select("id, final_price, status, package_name, customer_name, created_at, user_id")
+        .select("id, final_price, status, payment_status, package_name, customer_name, created_at, user_id, custom_order_id")
         .order("created_at", { ascending: false });
 
       if (orders) {
-        // Calculate stats
-        const totalRevenue = orders.reduce((sum, o) => sum + (Number(o.final_price) || 0), 0);
+        // Define paid statuses
+        const paidStatuses = ["paid", "confirmed", "delivered", "processing", "ready_for_delivery", "out_for_delivery"];
+        
+        // Calculate stats - only count orders with paid status for revenue
+        const paidOrders = orders.filter(o => 
+          paidStatuses.includes(o.status) || o.payment_status === "paid"
+        );
+        const totalRevenue = paidOrders.reduce((sum, o) => sum + (Number(o.final_price) || 0), 0);
+        
         const uniqueCustomers = new Set(orders.map(o => o.user_id)).size;
-        const pendingOrders = orders.filter(o => o.status === "pending" || o.status === "processing").length;
+        const pendingOrders = orders.filter(o => 
+          o.status === "pending_payment" || 
+          o.status === "waiting_for_price" || 
+          o.status === "pending" ||
+          o.payment_status === "proof_uploaded"
+        ).length;
 
         setStats({
           totalRevenue,
@@ -68,7 +82,10 @@ export default function AdminDashboard() {
         });
 
         // Set recent orders (top 5)
-        setRecentOrders(orders.slice(0, 5));
+        setRecentOrders(orders.slice(0, 5).map(o => ({
+          ...o,
+          custom_order_id: o.custom_order_id || o.id.slice(0, 8).toUpperCase(),
+        })));
       }
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
@@ -78,14 +95,21 @@ export default function AdminDashboard() {
   };
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      pending: "outline",
-      processing: "secondary",
-      confirmed: "default",
-      delivered: "default",
-      cancelled: "destructive",
+    const statusConfig: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
+      pending_payment: { variant: "outline", label: "Pending Payment" },
+      waiting_for_price: { variant: "outline", label: "Waiting for Price" },
+      price_sent: { variant: "secondary", label: "Price Sent" },
+      paid: { variant: "default", label: "Paid" },
+      processing: { variant: "secondary", label: "Processing" },
+      ready_for_delivery: { variant: "default", label: "Ready" },
+      out_for_delivery: { variant: "default", label: "Out for Delivery" },
+      delivered: { variant: "default", label: "Delivered" },
+      cancelled: { variant: "destructive", label: "Cancelled" },
+      pending: { variant: "outline", label: "Pending" },
+      confirmed: { variant: "default", label: "Confirmed" },
     };
-    return <Badge variant={variants[status] || "outline"}>{status}</Badge>;
+    const config = statusConfig[status] || { variant: "outline" as const, label: status };
+    return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
   const statCards = [
@@ -166,6 +190,9 @@ export default function AdminDashboard() {
                 {recentOrders.map((order) => (
                   <div key={order.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
                     <div className="flex-1">
+                      <p className="font-mono text-xs text-primary mb-1">
+                        {order.custom_order_id || order.id.slice(0, 8).toUpperCase()}
+                      </p>
                       <p className="font-medium">{order.package_name}</p>
                       <p className="text-sm text-muted-foreground">{order.customer_name}</p>
                     </div>

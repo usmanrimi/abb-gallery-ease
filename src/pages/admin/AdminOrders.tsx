@@ -11,12 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { formatPrice } from "@/data/categories";
-import { ShoppingCart, MessageSquare, Search, Calendar, RefreshCw, DollarSign } from "lucide-react";
+import { ShoppingCart, MessageSquare, Search, Calendar, RefreshCw, DollarSign, Image, Video, CheckCircle, XCircle } from "lucide-react";
 import { OrderChat } from "@/components/order/OrderChat";
 import { adminResponseSchema, customPriceSchema, validateInput } from "@/lib/validations";
 
 interface Order {
   id: string;
+  custom_order_id: string | null;
   user_id: string;
   package_name: string;
   package_class: string | null;
@@ -28,6 +29,9 @@ interface Order {
   admin_set_price: number | null;
   discount_amount: number;
   payment_method: string;
+  payment_status: string | null;
+  payment_proof_url: string | null;
+  payment_proof_type: string | null;
   installment_plan: string | null;
   delivery_date: string | null;
   delivery_time: string | null;
@@ -181,14 +185,63 @@ export default function AdminOrders() {
   });
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      pending: "outline",
-      processing: "secondary",
-      confirmed: "default",
-      delivered: "default",
-      cancelled: "destructive",
+    const statusConfig: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
+      pending_payment: { variant: "outline", label: "Pending Payment" },
+      waiting_for_price: { variant: "outline", label: "Waiting for Price" },
+      price_sent: { variant: "secondary", label: "Price Sent" },
+      paid: { variant: "default", label: "Paid" },
+      processing: { variant: "secondary", label: "Processing" },
+      ready_for_delivery: { variant: "default", label: "Ready for Delivery" },
+      out_for_delivery: { variant: "default", label: "Out for Delivery" },
+      delivered: { variant: "default", label: "Delivered" },
+      cancelled: { variant: "destructive", label: "Cancelled" },
+      pending: { variant: "outline", label: "Pending" },
+      confirmed: { variant: "default", label: "Confirmed" },
     };
-    return <Badge variant={variants[status] || "outline"}>{status}</Badge>;
+    const config = statusConfig[status] || { variant: "outline" as const, label: status };
+    return <Badge variant={config.variant}>{config.label}</Badge>;
+  };
+
+  const handleVerifyPayment = async (orderId: string, approved: boolean) => {
+    try {
+      const newStatus = approved ? "paid" : "pending_payment";
+      const { error } = await supabase
+        .from("orders")
+        .update({
+          payment_status: approved ? "paid" : "rejected",
+          payment_verified_at: approved ? new Date().toISOString() : null,
+          status: approved ? "processing" : "pending_payment",
+        })
+        .eq("id", orderId);
+
+      if (error) throw error;
+
+      // Get order details for notification
+      const order = orders.find((o) => o.id === orderId);
+      if (order) {
+        await supabase.from("notifications").insert({
+          user_id: order.user_id,
+          order_id: orderId,
+          title: approved ? "Payment Verified ✓" : "Payment Rejected",
+          message: approved
+            ? "Your payment has been verified. Your order is now being processed."
+            : "Your payment proof was rejected. Please upload a valid proof or contact support.",
+        });
+      }
+
+      toast({
+        title: approved ? "Payment verified" : "Payment rejected",
+        description: approved ? "Order moved to processing" : "Customer has been notified",
+      });
+
+      fetchOrders();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -222,9 +275,13 @@ export default function AdminOrders() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="pending_payment">Pending Payment</SelectItem>
+              <SelectItem value="waiting_for_price">Waiting for Price</SelectItem>
+              <SelectItem value="price_sent">Price Sent</SelectItem>
+              <SelectItem value="paid">Paid</SelectItem>
               <SelectItem value="processing">Processing</SelectItem>
-              <SelectItem value="confirmed">Confirmed</SelectItem>
+              <SelectItem value="ready_for_delivery">Ready for Delivery</SelectItem>
+              <SelectItem value="out_for_delivery">Out for Delivery</SelectItem>
               <SelectItem value="delivered">Delivered</SelectItem>
               <SelectItem value="cancelled">Cancelled</SelectItem>
             </SelectContent>
@@ -254,12 +311,22 @@ export default function AdminOrders() {
                     <div className="space-y-2 flex-1">
                       <div className="flex items-start justify-between">
                         <div>
+                          <p className="font-mono text-sm text-primary font-semibold mb-1">
+                            {order.custom_order_id || order.id.slice(0, 8).toUpperCase()}
+                          </p>
                           <h3 className="font-semibold text-lg">{order.package_name}</h3>
                           {order.package_class && (
                             <p className="text-sm text-muted-foreground">Class: {order.package_class}</p>
                           )}
                         </div>
-                        {getStatusBadge(order.status)}
+                        <div className="flex flex-col items-end gap-1">
+                          {getStatusBadge(order.status)}
+                          {order.payment_status && order.payment_status !== "pending_payment" && (
+                            <Badge variant={order.payment_status === "paid" ? "default" : "outline"} className="text-xs">
+                              {order.payment_status === "paid" ? "💳 Paid" : order.payment_status}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 text-sm">
                         <div>
@@ -272,7 +339,14 @@ export default function AdminOrders() {
                         </div>
                         <div>
                           <span className="text-muted-foreground">WhatsApp:</span>{" "}
-                          <span className="font-medium">{order.customer_whatsapp}</span>
+                          <a
+                            href={`https://wa.me/${order.customer_whatsapp.replace(/\D/g, "")}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-primary hover:underline"
+                          >
+                            {order.customer_whatsapp}
+                          </a>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Quantity:</span>{" "}
@@ -303,6 +377,56 @@ export default function AdminOrders() {
                           <p className="text-sm">{order.custom_request}</p>
                         </div>
                       )}
+                      
+                      {/* Payment Proof Section */}
+                      {order.payment_proof_url && order.payment_status === "proof_uploaded" && (
+                        <div className="p-3 mt-2 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-sm font-medium text-amber-700 flex items-center gap-2">
+                              {order.payment_proof_type === "video" ? (
+                                <Video className="h-4 w-4" />
+                              ) : (
+                                <Image className="h-4 w-4" />
+                              )}
+                              Payment Proof Uploaded
+                            </p>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-success border-success hover:bg-success/10"
+                                onClick={() => handleVerifyPayment(order.id, true)}
+                              >
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-destructive border-destructive hover:bg-destructive/10"
+                                onClick={() => handleVerifyPayment(order.id, false)}
+                              >
+                                <XCircle className="h-3 w-3 mr-1" />
+                                Reject
+                              </Button>
+                            </div>
+                          </div>
+                          {order.payment_proof_type === "video" ? (
+                            <video
+                              src={order.payment_proof_url}
+                              controls
+                              className="w-full max-h-32 rounded object-contain bg-black"
+                            />
+                          ) : (
+                            <img
+                              src={order.payment_proof_url}
+                              alt="Payment proof"
+                              className="w-full max-h-32 rounded object-contain bg-muted"
+                            />
+                          )}
+                        </div>
+                      )}
+                      
                       <p className="text-xs text-muted-foreground flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
                         {new Date(order.created_at).toLocaleDateString("en-NG", {
@@ -356,9 +480,13 @@ export default function AdminOrders() {
                                     <SelectValue placeholder="Select status" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="pending">Pending</SelectItem>
+                                    <SelectItem value="pending_payment">Pending Payment</SelectItem>
+                                    <SelectItem value="waiting_for_price">Waiting for Price</SelectItem>
+                                    <SelectItem value="price_sent">Price Sent</SelectItem>
+                                    <SelectItem value="paid">Paid</SelectItem>
                                     <SelectItem value="processing">Processing</SelectItem>
-                                    <SelectItem value="confirmed">Confirmed</SelectItem>
+                                    <SelectItem value="ready_for_delivery">Ready for Delivery</SelectItem>
+                                    <SelectItem value="out_for_delivery">Out for Delivery</SelectItem>
                                     <SelectItem value="delivered">Delivered</SelectItem>
                                     <SelectItem value="cancelled">Cancelled</SelectItem>
                                   </SelectContent>
