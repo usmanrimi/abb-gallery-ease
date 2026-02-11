@@ -30,6 +30,12 @@ import AdminOrders from "./pages/admin/AdminOrders";
 import AdminDeliveries from "./pages/admin/AdminDeliveries";
 import AdminReports from "./pages/admin/AdminReports";
 import AdminSettings from "./pages/admin/AdminSettings";
+import SuperAdminDashboard from "./pages/superadmin/SuperAdminDashboard";
+import SuperAdminManagement from "./pages/superadmin/SuperAdminManagement";
+import SuperAdminAuditLog from "./pages/superadmin/SuperAdminAuditLog";
+import SuperAdminSettings from "./pages/superadmin/SuperAdminSettings";
+import SuperAdminCustomers from "./pages/superadmin/SuperAdminCustomers";
+import SuperAdminAnalytics from "./pages/superadmin/SuperAdminAnalytics";
 
 const queryClient = new QueryClient();
 
@@ -122,6 +128,38 @@ const App = () => (
             <Route path="/admin/settings" element={
               <ProtectedRoute allowedRole="admin">
                 <AdminSettings />
+              </ProtectedRoute>
+            } />
+
+            {/* Protected Super Admin Routes */}
+            <Route path="/super-admin" element={
+              <ProtectedRoute allowedRole="super_admin">
+                <SuperAdminDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/super-admin/admins" element={
+              <ProtectedRoute allowedRole="super_admin">
+                <SuperAdminManagement />
+              </ProtectedRoute>
+            } />
+            <Route path="/super-admin/customers" element={
+              <ProtectedRoute allowedRole="super_admin">
+                <SuperAdminCustomers />
+              </ProtectedRoute>
+            } />
+            <Route path="/super-admin/analytics" element={
+              <ProtectedRoute allowedRole="super_admin">
+                <SuperAdminAnalytics />
+              </ProtectedRoute>
+            } />
+            <Route path="/super-admin/audit-log" element={
+              <ProtectedRoute allowedRole="super_admin">
+                <SuperAdminAuditLog />
+              </ProtectedRoute>
+            } />
+            <Route path="/super-admin/settings" element={
+              <ProtectedRoute allowedRole="super_admin">
+                <SuperAdminSettings />
               </ProtectedRoute>
             } />
             
