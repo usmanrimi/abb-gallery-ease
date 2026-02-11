@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          details: string | null
+          entity_id: string | null
+          entity_type: string
+          id: string
+          user_id: string
+          user_name: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: string | null
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          user_id: string
+          user_name?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: string | null
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          user_id?: string
+          user_name?: string | null
+        }
+        Relationships: []
+      }
       category_settings: {
         Row: {
           category_slug: string

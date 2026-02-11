@@ -20,13 +20,14 @@ export default function AdminLogin() {
   const { toast } = useToast();
   const { signIn, user, role, loading } = useAuth();
 
-  // Redirect if already logged in as admin
+  // Redirect if already logged in as admin/super_admin
   useEffect(() => {
     if (!loading && user && role) {
-      if (role === "admin") {
+      if (role === "super_admin") {
+        navigate("/super-admin");
+      } else if (role === "admin") {
         navigate("/admin");
       } else {
-        // If logged in but not admin, show error and redirect
         toast({
           title: "Access Denied",
           description: "You don't have admin privileges.",

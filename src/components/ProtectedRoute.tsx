@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  allowedRole?: "admin" | "customer";
+  allowedRole?: "admin" | "customer" | "super_admin";
 }
 
 export function ProtectedRoute({ children, allowedRole }: ProtectedRouteProps) {
@@ -22,12 +22,20 @@ export function ProtectedRoute({ children, allowedRole }: ProtectedRouteProps) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (allowedRole && role !== allowedRole) {
-    // Redirect to appropriate dashboard based on role
-    if (role === "admin") {
-      return <Navigate to="/admin" replace />;
+  if (allowedRole) {
+    // Super admin can also access admin routes
+    const hasAccess = role === allowedRole || 
+      (allowedRole === "admin" && role === "super_admin");
+    
+    if (!hasAccess) {
+      if (role === "super_admin") {
+        return <Navigate to="/super-admin" replace />;
+      }
+      if (role === "admin") {
+        return <Navigate to="/admin" replace />;
+      }
+      return <Navigate to="/dashboard" replace />;
     }
-    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;
