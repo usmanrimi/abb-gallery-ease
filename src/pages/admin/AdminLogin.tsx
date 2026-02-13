@@ -25,7 +25,7 @@ export default function AdminLogin() {
     if (!loading && user && role) {
       if (role === "super_admin") {
         navigate("/super-admin");
-      } else if (role === "admin") {
+      } else if (role === "admin_ops") {
         navigate("/admin");
       } else {
         toast({

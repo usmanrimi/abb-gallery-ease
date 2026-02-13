@@ -43,7 +43,9 @@ export function Header() {
   };
 
   const handleDashboardClick = () => {
-    if (role === "admin") {
+    if (role === "super_admin") {
+      navigate("/super-admin");
+    } else if (role === "admin_ops") {
       navigate("/admin");
     } else {
       navigate("/dashboard");

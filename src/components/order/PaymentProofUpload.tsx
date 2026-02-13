@@ -102,7 +102,7 @@ export function PaymentProofUpload({ orderId, onUploadComplete }: PaymentProofUp
       const { data: adminRoles } = await supabase
         .from("user_roles")
         .select("user_id")
-        .eq("role", "admin");
+        .in("role", ["admin_ops", "super_admin"]);
 
       if (adminRoles && adminRoles.length > 0) {
         await supabase.from("notifications").insert(
