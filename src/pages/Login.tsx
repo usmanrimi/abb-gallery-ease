@@ -24,7 +24,9 @@ export default function Login() {
   // Redirect if already logged in
   useEffect(() => {
     if (!loading && user && role) {
-      if (role === "admin") {
+      if (role === "super_admin") {
+        navigate("/super-admin");
+      } else if (role === "admin_ops") {
         navigate("/admin");
       } else {
         navigate("/dashboard");

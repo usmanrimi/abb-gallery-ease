@@ -25,7 +25,7 @@ export default function SuperAdminManagement() {
   const [creating, setCreating] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const { user } = useAuth();
-  const [newAdmin, setNewAdmin] = useState({ email: "", password: "", fullName: "", role: "admin" as string });
+  const [newAdmin, setNewAdmin] = useState({ email: "", password: "", fullName: "", role: "admin_ops" as string });
 
   useEffect(() => {
     fetchAdmins();
@@ -38,7 +38,7 @@ export default function SuperAdminManagement() {
       const { data: roles, error } = await supabase
         .from("user_roles")
         .select("user_id, role")
-        .in("role", ["admin", "super_admin"]);
+        .in("role", ["admin_ops", "super_admin"]);
 
       if (error) throw error;
 
@@ -104,9 +104,9 @@ export default function SuperAdminManagement() {
           details: `Created ${newAdmin.role} account for ${newAdmin.email}`,
         });
 
-        toast.success(`${newAdmin.role === "super_admin" ? "Super Admin" : "Admin"} account created!`);
+        toast.success(`${newAdmin.role === "super_admin" ? "Super Admin" : "Admin Operations"} account created!`);
         setDialogOpen(false);
-        setNewAdmin({ email: "", password: "", fullName: "", role: "admin" });
+        setNewAdmin({ email: "", password: "", fullName: "", role: "admin_ops" });
         fetchAdmins();
       }
     } catch (error: any) {
@@ -223,7 +223,7 @@ export default function SuperAdminManagement() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="admin">Admin (Operations)</SelectItem>
+                      <SelectItem value="admin_ops">Admin Operations</SelectItem>
                       <SelectItem value="super_admin">Super Admin (Owner)</SelectItem>
                     </SelectContent>
                   </Select>
@@ -259,7 +259,7 @@ export default function SuperAdminManagement() {
                       <p className="font-semibold">{admin.full_name || "Unknown"}</p>
                       <p className="text-sm text-muted-foreground">{admin.email}</p>
                       <Badge variant={admin.role === "super_admin" ? "default" : "secondary"}>
-                        {admin.role === "super_admin" ? "Super Admin" : "Admin"}
+                        {admin.role === "super_admin" ? "Super Admin" : "Admin Operations"}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-2">
@@ -273,7 +273,7 @@ export default function SuperAdminManagement() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="admin">Admin</SelectItem>
+                              <SelectItem value="admin_ops">Admin Operations</SelectItem>
                               <SelectItem value="super_admin">Super Admin</SelectItem>
                             </SelectContent>
                           </Select>
