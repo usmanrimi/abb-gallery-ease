@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,46 +34,20 @@ export default function SuperAdminManagement() {
   const fetchAdmins = async () => {
     setLoading(true);
     try {
-<<<<<<< HEAD
       // Get all profiles with admin roles
       const { data: profiles, error } = await supabase
         .from("profiles")
         .select("id, full_name, email, role")
-=======
-      // Get all non-customer roles
-      const { data: roles, error } = await supabase
-        .from("user_roles")
-        .select("user_id, role")
->>>>>>> 1159a076ff4118cb5b2a359532a81d648d57a238
         .in("role", ["admin_ops", "super_admin"]);
 
       if (error) throw error;
 
-<<<<<<< HEAD
       const adminList = (profiles || []).map(p => ({
         user_id: p.id,
         role: p.role,
         full_name: p.full_name || null,
         email: p.email || null,
       }));
-=======
-      // Get profiles for these users
-      const userIds = (roles || []).map(r => r.user_id);
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, full_name, email")
-        .in("id", userIds);
-
-      const adminList = (roles || []).map(r => {
-        const profile = (profiles || []).find(p => p.id === r.user_id);
-        return {
-          user_id: r.user_id,
-          role: r.role,
-          full_name: profile?.full_name || null,
-          email: profile?.email || null,
-        };
-      });
->>>>>>> 1159a076ff4118cb5b2a359532a81d648d57a238
 
       setAdmins(adminList);
     } catch (error) {
@@ -102,7 +76,6 @@ export default function SuperAdminManagement() {
       if (signUpError) throw signUpError;
 
       if (signUpData.user) {
-<<<<<<< HEAD
         // Update the role in profiles table - This is the Single Source of Truth
         // Note: The profile row is usually created by a trigger on auth.users, 
         // but we need to ensure the role is updated
@@ -137,30 +110,6 @@ export default function SuperAdminManagement() {
             fetchAdmins();
           }
         }, 1000);
-=======
-        // Update the role from customer to admin/super_admin
-        const { error: roleError } = await supabase
-          .from("user_roles")
-          .update({ role: newAdmin.role as any })
-          .eq("user_id", signUpData.user.id);
-
-        if (roleError) throw roleError;
-
-        // Log the action
-        await supabase.from("audit_log").insert({
-          user_id: user!.id,
-          user_name: user?.user_metadata?.full_name || user?.email || "Unknown",
-          action: "create_admin",
-          entity_type: "user",
-          entity_id: signUpData.user.id,
-          details: `Created ${newAdmin.role} account for ${newAdmin.email}`,
-        });
-
-        toast.success(`${newAdmin.role === "super_admin" ? "Super Admin" : "Admin Operations"} account created!`);
-        setDialogOpen(false);
-        setNewAdmin({ email: "", password: "", fullName: "", role: "admin_ops" });
-        fetchAdmins();
->>>>>>> 1159a076ff4118cb5b2a359532a81d648d57a238
       }
     } catch (error: any) {
       toast.error(error.message || "Failed to create admin");
@@ -172,15 +121,9 @@ export default function SuperAdminManagement() {
   const handleChangeRole = async (userId: string, newRole: string) => {
     try {
       const { error } = await supabase
-<<<<<<< HEAD
         .from("profiles")
         .update({ role: newRole as any })
         .eq("id", userId);
-=======
-        .from("user_roles")
-        .update({ role: newRole as any })
-        .eq("user_id", userId);
->>>>>>> 1159a076ff4118cb5b2a359532a81d648d57a238
 
       if (error) throw error;
 
@@ -207,15 +150,9 @@ export default function SuperAdminManagement() {
     }
     try {
       const { error } = await supabase
-<<<<<<< HEAD
         .from("profiles")
         .update({ role: "customer" as any })
         .eq("id", userId);
-=======
-        .from("user_roles")
-        .update({ role: "customer" as any })
-        .eq("user_id", userId);
->>>>>>> 1159a076ff4118cb5b2a359532a81d648d57a238
 
       if (error) throw error;
 
