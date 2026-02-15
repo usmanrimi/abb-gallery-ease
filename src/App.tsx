@@ -10,8 +10,9 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
+import ForgotPassword from "./pages/auth/ForgotPassword";
+import ResetPassword from "./pages/auth/ResetPassword";
+import DebugEnv from "./pages/DebugEnv";
 import AdminLogin from "./pages/admin/AdminLogin";
 import Categories from "./pages/Categories";
 import CategoryDetail from "./pages/CategoryDetail";
@@ -55,6 +56,7 @@ const App = () => (
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/debug-env" element={<DebugEnv />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/categories" element={<Categories />} />
