@@ -2,46 +2,66 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, CheckCircle, AlertTriangle } from "lucide-react";
+import { Loader2, CheckCircle, AlertTriangle, Shield, UserCog } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 
+interface AccountConfig {
+    email: string;
+    password: string;
+    fullName: string;
+    role: string;
+    label: string;
+}
+
+const ACCOUNTS: AccountConfig[] = [
+    {
+        email: "abbatrading2017@gmail.com",
+        password: "@MAG2026",
+        fullName: "Admin Operations",
+        role: "admin_ops",
+        label: "Admin Operations",
+    },
+    {
+        email: "abbatrading2013@gmail.com",
+        password: "@MAG2026",
+        fullName: "Super Admin",
+        role: "super_admin",
+        label: "Super Admin",
+    },
+];
+
 export default function SetupAdmin() {
-    const [loading, setLoading] = useState(false);
-    const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
+    const [loading, setLoading] = useState<string | null>(null);
+    const [status, setStatus] = useState<Record<string, "idle" | "success" | "error">>({});
     const [logs, setLogs] = useState<string[]>([]);
 
     const addLog = (msg: string) => setLogs(prev => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`]);
-
     const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-    const handleSetup = async () => {
-        setLoading(true);
-        setStatus("idle");
+    const handleSetup = async (account: AccountConfig) => {
+        setLoading(account.role);
+        setStatus(prev => ({ ...prev, [account.role]: "idle" }));
         setLogs([]);
-        addLog("Starting Admin Setup...");
-
-        const email = "abbatrading2017@gmail.com";
-        const password = "@MAG2026";
-        const fullName = "Admin Operations";
+        addLog(`Setting up ${account.label} (${account.email})...`);
 
         try {
             let userId: string | undefined;
 
-            // Step 1: Check if already logged in
+            // Step 1: Check existing session
             addLog("Checking for existing session...");
             const { data: { session: existingSession } } = await supabase.auth.getSession();
 
-            if (existingSession?.user) {
+            if (existingSession?.user?.email === account.email) {
                 userId = existingSession.user.id;
-                addLog(`Already logged in as: ${existingSession.user.email} (ID: ${userId})`);
+                addLog(`Already logged in as ${account.email}`);
             }
 
-            // Step 2: If no session, try sign in
+            // Step 2: Try sign in
             if (!userId) {
-                addLog(`Attempting sign in as ${email}...`);
+                addLog(`Signing in as ${account.email}...`);
                 const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-                    email,
-                    password
+                    email: account.email,
+                    password: account.password,
                 });
 
                 if (!signInError && signInData.session?.user) {
@@ -50,32 +70,25 @@ export default function SetupAdmin() {
                 } else if (signInError) {
                     addLog(`Sign in failed: ${signInError.message}`);
 
-                    // Check for rate limit
+                    // Rate limit check
                     if (signInError.message.includes("security") || signInError.message.includes("seconds")) {
-                        addLog("Rate limited. Waiting 60 seconds before trying signup...");
-                        addLog("Please wait...");
+                        addLog("Rate limited. Waiting 60s...");
                         await wait(60000);
                     }
 
                     // Step 3: Try sign up
                     addLog("Attempting sign up...");
                     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-                        email,
-                        password,
-                        options: {
-                            data: { full_name: fullName }
-                        }
+                        email: account.email,
+                        password: account.password,
+                        options: { data: { full_name: account.fullName } },
                     });
 
                     if (signUpError) {
-                        // If rate limited again, give manual instructions
-                        if (signUpError.message.includes("security") || signUpError.message.includes("seconds")) {
-                            addLog("ERROR: Still rate limited by Supabase.");
-                            addLog("ALTERNATIVE: Create this user manually in Supabase Dashboard → Authentication → Users → Add User");
-                            addLog(`Email: ${email}, Password: ${password}`);
-                            addLog("Then come back and click the button again to set the role.");
-                            setStatus("error");
-                            setLoading(false);
+                        if (signUpError.message.includes("security") || signUpError.message.includes("rate limit")) {
+                            addLog("ERROR: Rate limited. Wait 60s and try again, or create the user manually in Supabase Dashboard → Authentication → Users → Add User.");
+                            setStatus(prev => ({ ...prev, [account.role]: "error" }));
+                            setLoading(null);
                             return;
                         }
                         throw new Error(`SignUp failed: ${signUpError.message}`);
@@ -83,46 +96,40 @@ export default function SetupAdmin() {
 
                     if (signUpData.user) {
                         userId = signUpData.user.id;
-                        addLog("User created successfully.");
+                        addLog("User created.");
                     } else {
-                        addLog("WARNING: SignUp returned no user. The account may need email confirmation.");
-                        addLog("Check Supabase Dashboard → Authentication → Users to see if the user exists.");
-                        addLog("If the user exists, try clicking the button again after 60 seconds.");
-                        setStatus("error");
-                        setLoading(false);
+                        addLog("WARNING: No user returned. Check Supabase Dashboard for email confirmation.");
+                        setStatus(prev => ({ ...prev, [account.role]: "error" }));
+                        setLoading(null);
                         return;
                     }
                 }
             }
 
-            if (!userId) {
-                throw new Error("Could not obtain a User ID. Please try again in 60 seconds.");
-            }
+            if (!userId) throw new Error("No User ID obtained.");
 
-            // Step 4: Upsert profile with admin_ops role
-            addLog(`Updating profile for User ID: ${userId}...`);
+            // Step 4: Upsert profile
+            addLog(`Setting role to '${account.role}'...`);
             const { error: profileError } = await supabase
-                .from('profiles')
+                .from("profiles")
                 .upsert({
                     id: userId,
-                    full_name: fullName,
-                    role: 'admin_ops',
-                    updated_at: new Date().toISOString()
+                    full_name: account.fullName,
+                    email: account.email,
+                    role: account.role,
+                    updated_at: new Date().toISOString(),
                 });
 
-            if (profileError) {
-                throw new Error(`Profile update failed: ${profileError.message}`);
-            }
+            if (profileError) throw new Error(`Profile update failed: ${profileError.message}`);
 
-            addLog("SUCCESS: Profile updated to 'admin_ops'.");
-            setStatus("success");
-
+            addLog(`SUCCESS: ${account.label} account ready with role '${account.role}'.`);
+            setStatus(prev => ({ ...prev, [account.role]: "success" }));
         } catch (error: any) {
             addLog(`ERROR: ${error.message}`);
             console.error(error);
-            setStatus("error");
+            setStatus(prev => ({ ...prev, [account.role]: "error" }));
         } finally {
-            setLoading(false);
+            setLoading(null);
         }
     };
 
@@ -131,49 +138,86 @@ export default function SetupAdmin() {
             <div className="container mx-auto py-10 px-4">
                 <Card className="max-w-2xl mx-auto">
                     <CardHeader>
-                        <CardTitle className="text-2xl">Admin Setup & Repair</CardTitle>
+                        <CardTitle className="text-2xl">Account Setup & Repair</CardTitle>
                         <CardDescription>
-                            Create or fix the main Admin Operations account. If you get a rate limit error, wait 60 seconds and try again.
+                            Create or fix admin accounts. If rate limited, wait 60 seconds and retry.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                        <div className="bg-muted p-4 rounded-md">
-                            <h3 className="font-semibold mb-2">Target Account:</h3>
-                            <p>Email: <span className="font-mono">abbatrading2017@gmail.com</span></p>
-                            <p>Role: <span className="font-mono">admin_ops</span></p>
-                            <p>Password: <span className="font-mono">@MAG2026</span></p>
+                        {/* Account Buttons */}
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            {ACCOUNTS.map((account) => (
+                                <div key={account.role} className="border rounded-lg p-4 space-y-3">
+                                    <div className="flex items-center gap-2">
+                                        {account.role === "super_admin" ? (
+                                            <Shield className="h-5 w-5 text-red-500" />
+                                        ) : (
+                                            <UserCog className="h-5 w-5 text-blue-500" />
+                                        )}
+                                        <h3 className="font-semibold">{account.label}</h3>
+                                    </div>
+                                    <div className="text-sm text-muted-foreground space-y-1">
+                                        <p>Email: <span className="font-mono text-xs">{account.email}</span></p>
+                                        <p>Role: <span className="font-mono text-xs">{account.role}</span></p>
+                                    </div>
+                                    <Button
+                                        onClick={() => handleSetup(account)}
+                                        className="w-full"
+                                        size="sm"
+                                        disabled={loading !== null}
+                                        variant={account.role === "super_admin" ? "destructive" : "default"}
+                                    >
+                                        {loading === account.role ? (
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        ) : null}
+                                        {loading === account.role
+                                            ? "Working..."
+                                            : `Setup ${account.label}`}
+                                    </Button>
+                                    {status[account.role] === "success" && (
+                                        <div className="flex items-center gap-1 text-green-600 text-sm">
+                                            <CheckCircle className="h-4 w-4" /> Ready
+                                        </div>
+                                    )}
+                                    {status[account.role] === "error" && (
+                                        <div className="flex items-center gap-1 text-red-600 text-sm">
+                                            <AlertTriangle className="h-4 w-4" /> Failed — see logs
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
                         </div>
 
-                        <Button
-                            onClick={handleSetup}
-                            className="w-full"
-                            size="lg"
-                            disabled={loading}
-                        >
-                            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            {loading ? "Working... (may take up to 60s)" : "Create / Fix Admin Account"}
-                        </Button>
-
+                        {/* Logs */}
                         {logs.length > 0 && (
-                            <div className="mt-6 p-4 bg-slate-100 rounded-md max-h-60 overflow-y-auto text-sm font-mono border">
+                            <div className="p-4 bg-slate-100 rounded-md max-h-60 overflow-y-auto text-sm font-mono border">
                                 {logs.map((log, i) => (
-                                    <div key={i} className={log.includes("ERROR") ? "text-red-600" : log.includes("SUCCESS") ? "text-green-600 font-bold" : log.includes("WARNING") ? "text-yellow-600" : "text-slate-700"}>
+                                    <div
+                                        key={i}
+                                        className={
+                                            log.includes("ERROR")
+                                                ? "text-red-600"
+                                                : log.includes("SUCCESS")
+                                                    ? "text-green-600 font-bold"
+                                                    : log.includes("WARNING")
+                                                        ? "text-yellow-600"
+                                                        : "text-slate-700"
+                                        }
+                                    >
                                         {log}
                                     </div>
                                 ))}
                             </div>
                         )}
 
-                        {status === "success" && (
-                            <div className="p-4 bg-green-50 text-green-700 rounded-md flex items-center gap-2">
-                                <CheckCircle className="h-5 w-5" />
-                                <span>Admin account is ready! You can now <a href="/admin/login" className="underline font-bold">Log In</a>.</span>
-                            </div>
-                        )}
-                        {status === "error" && (
-                            <div className="p-4 bg-red-50 text-red-700 rounded-md flex items-center gap-2">
-                                <AlertTriangle className="h-5 w-5" />
-                                <span>Setup failed. Check the logs above. Try again in 60 seconds.</span>
+                        {/* Quick Links */}
+                        {(status.admin_ops === "success" || status.super_admin === "success") && (
+                            <div className="p-4 bg-green-50 text-green-700 rounded-md space-y-2">
+                                <p className="font-semibold">✅ Accounts ready! Login links:</p>
+                                <div className="flex gap-3 flex-wrap">
+                                    <a href="/admin/login" className="underline font-medium">Admin Login →</a>
+                                    <a href="/login" className="underline font-medium">Main Login →</a>
+                                </div>
                             </div>
                         )}
                     </CardContent>
