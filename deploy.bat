@@ -32,6 +32,6 @@ echo Pushing to GitHub...
 echo.
 echo ========================================================
 echo Deployment Complete!
-echo You can now check Netlify for the build status.
+echo You can now check Vercel/GitHub for the build status.
 echo ========================================================
 pause
