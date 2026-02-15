@@ -28,7 +28,10 @@ const navItems = [
   { href: "/admin/customers", label: "Customers", icon: Users },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { href: "/admin/deliveries", label: "Deliveries", icon: Truck },
+<<<<<<< HEAD
   { href: "/admin/categories", label: "Categories", icon: Package },
+=======
+>>>>>>> 1159a076ff4118cb5b2a359532a81d648d57a238
   { href: "/admin/reports", label: "Reports", icon: BarChart3 },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
@@ -108,8 +111,13 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               Back to Store
             </Button>
           </Link>
+<<<<<<< HEAD
           <Button
             variant="ghost"
+=======
+          <Button 
+            variant="ghost" 
+>>>>>>> 1159a076ff4118cb5b2a359532a81d648d57a238
             className="w-full justify-start gap-3 text-destructive hover:text-destructive hover:bg-sidebar-accent"
             onClick={handleSignOut}
           >

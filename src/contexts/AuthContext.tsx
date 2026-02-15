@@ -28,7 +28,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 1159a076ff4118cb5b2a359532a81d648d57a238
         // Defer role fetch with setTimeout to prevent deadlock
         if (session?.user) {
           setTimeout(() => {
@@ -54,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const fetchUserRole = async (userId: string) => {
+<<<<<<< HEAD
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -71,12 +76,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       console.error('Error in fetchUserRole:', error);
+=======
+    const { data, error } = await supabase
+      .rpc('get_user_role', { _user_id: userId });
+    
+    if (!error && data) {
+      setRole(data as UserRole);
+>>>>>>> 1159a076ff4118cb5b2a359532a81d648d57a238
     }
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
     const redirectUrl = `${window.location.origin}/`;
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 1159a076ff4118cb5b2a359532a81d648d57a238
     const { error } = await supabase.auth.signUp({
       email,
       password,
