@@ -16,10 +16,17 @@ export default function DebugEnv() {
         const pubKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
         const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+        // Check for common misconfiguration (missing VITE_ prefix)
+        // Note: We can only check these if we explicitly reference them in code due to Vite's static replacement
+        const wrongUrl = import.meta.env.SUPABASE_URL;
+        const wrongKey = import.meta.env.PUBLISHABLE_KEY;
+
         setConfig({
             url: url ? `${url.substring(0, 8)}...` : "MISSING",
             pubKey: pubKey ? `${pubKey.substring(0, 5)}...` : "MISSING",
             anonKey: anonKey ? `${anonKey.substring(0, 5)}...` : "MISSING",
+            hasWrongUrl: !!wrongUrl,
+            hasWrongKey: !!wrongKey
         });
 
         try {
@@ -67,8 +74,19 @@ export default function DebugEnv() {
                         </div>
                     </div>
 
+                    {config.hasWrongUrl && (
+                        <div className="p-2 bg-yellow-100 text-yellow-800 text-xs rounded">
+                            ⚠️ <strong>WARNING:</strong> Found <code>SUPABASE_URL</code>. Rename it to <code>VITE_SUPABASE_URL</code> in Vercel.
+                        </div>
+                    )}
+                    {config.hasWrongKey && (
+                        <div className="p-2 bg-yellow-100 text-yellow-800 text-xs rounded">
+                            ⚠️ <strong>WARNING:</strong> Found <code>PUBLISHABLE_KEY</code>. Rename it to <code>VITE_SUPABASE_PUBLISHABLE_KEY</code> in Vercel.
+                        </div>
+                    )}
+
                     <div className={`p-4 rounded-md ${status === "success" ? "bg-green-100 text-green-800" :
-                            status === "error" ? "bg-red-100 text-red-800" : "bg-blue-100 text-blue-800"
+                        status === "error" ? "bg-red-100 text-red-800" : "bg-blue-100 text-blue-800"
                         }`}>
                         <span className="font-bold">Status:</span> {message}
                     </div>
