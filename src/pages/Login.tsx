@@ -21,6 +21,30 @@ export default function Login() {
   const { toast } = useToast();
   const { signIn, user, role, loading } = useAuth();
 
+  // DEBUG: Check Supabase Config
+  useEffect(() => {
+    console.log("Supabase Config Check:");
+    console.log("URL:", import.meta.env.VITE_SUPABASE_URL ? "Set" : "Missing");
+    console.log("Key (Pub):", import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ? "Set" : "Missing");
+    console.log("Key (Anon):", import.meta.env.VITE_SUPABASE_ANON_KEY ? "Set" : "Missing");
+
+    // Alert if critical config is missing
+    if (!import.meta.env.VITE_SUPABASE_URL) {
+      toast({
+        title: "Configuration Error",
+        description: "VITE_SUPABASE_URL is missing!",
+        variant: "destructive"
+      });
+    }
+    if (!import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY && !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      toast({
+        title: "Configuration Error",
+        description: "Supabase Key is missing!",
+        variant: "destructive"
+      });
+    }
+  }, []);
+
   // Redirect if already logged in
   useEffect(() => {
     if (!loading && user && role) {
