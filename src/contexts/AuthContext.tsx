@@ -9,7 +9,7 @@ interface AuthContextType {
   session: Session | null;
   role: UserRole | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, fullName: string) => Promise<{ data: any; error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
@@ -41,11 +41,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchUserRole(session.user.id);
+        await fetchUserRole(session.user.id);
       }
       setLoading(false);
     });
@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchUserRole = async (userId: string) => {
+  const fetchUserRole = async (userId: string, retries = 3) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -63,6 +63,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) {
         console.error('Error fetching role:', error);
+        // If profile doesn't exist yet (race condition with trigger), retry
+        if (retries > 0) {
+          setTimeout(() => fetchUserRole(userId, retries - 1), 1000);
+        }
         return;
       }
 
@@ -77,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = async (email: string, password: string, fullName: string) => {
     const redirectUrl = `${window.location.origin}/`;
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {

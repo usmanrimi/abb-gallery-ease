@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Mail, Phone, Lock, User, ArrowLeft } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
@@ -54,7 +55,7 @@ export default function Register() {
 
     setIsLoading(true);
 
-    const { error } = await signUp(formData.email, formData.password, formData.fullName);
+    const { data, error } = await signUp(formData.email, formData.password, formData.fullName);
 
     if (error) {
       toast({
@@ -64,6 +65,20 @@ export default function Register() {
       });
       setIsLoading(false);
       return;
+    }
+
+    if (data?.user) {
+      // Manual fallback: Create profile if it doesn't exist
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert([{ id: data.user.id, role: 'customer', full_name: formData.fullName }])
+        .select()
+        .single();
+
+      // Ignore unique constraint error (trigger might have worked)
+      if (profileError && profileError.code !== '23505') {
+        console.error("Profile creation error:", profileError);
+      }
     }
 
     toast({
