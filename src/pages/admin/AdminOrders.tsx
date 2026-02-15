@@ -1,0 +1,549 @@
+import { useState, useEffect } from "react";
+import { AdminLayout } from "@/components/admin/AdminLayout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { formatPrice } from "@/data/categories";
+import { ShoppingCart, MessageSquare, Search, Calendar, RefreshCw, DollarSign, Image, Video, CheckCircle, XCircle } from "lucide-react";
+import { OrderChat } from "@/components/order/OrderChat";
+import { adminResponseSchema, customPriceSchema, validateInput } from "@/lib/validations";
+
+interface Order {
+  id: string;
+  custom_order_id: string | null;
+  user_id: string;
+  package_name: string;
+  package_class: string | null;
+  quantity: number;
+  notes: string | null;
+  custom_request: string | null;
+  total_price: number;
+  final_price: number;
+  admin_set_price: number | null;
+  discount_amount: number;
+  payment_method: string;
+  payment_status: string | null;
+  payment_proof_url: string | null;
+  payment_proof_type: string | null;
+  installment_plan: string | null;
+  delivery_date: string | null;
+  delivery_time: string | null;
+  customer_name: string;
+  customer_email: string;
+  customer_whatsapp: string;
+  status: string;
+  admin_response: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export default function AdminOrders() {
+  const { toast } = useToast();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [response, setResponse] = useState("");
+  const [newStatus, setNewStatus] = useState("");
+  const [customPrice, setCustomPrice] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const fetchOrders = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setOrders(data || []);
+    } catch (error: any) {
+      toast({
+        title: "Error fetching orders",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  const handleRespond = async () => {
+    if (!selectedOrder) return;
+    
+    // Validate inputs before submission
+    const responseValidation = validateInput(adminResponseSchema, response);
+    if (responseValidation.success === false) {
+      toast({
+        title: "Validation Error",
+        description: responseValidation.error,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const priceValidation = validateInput(customPriceSchema, customPrice);
+    if (priceValidation.success === false) {
+      toast({
+        title: "Validation Error",
+        description: priceValidation.error,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Sanitize inputs
+      const sanitizedResponse = response?.trim().slice(0, 2000) || null;
+      const sanitizedPrice = customPrice && parseFloat(customPrice) > 0 ? parseFloat(customPrice) : null;
+
+      const updateData: any = {
+        admin_response: sanitizedResponse,
+        status: newStatus || selectedOrder.status,
+      };
+
+      // If custom price is set, add it to the update
+      if (sanitizedPrice !== null) {
+        updateData.admin_set_price = sanitizedPrice;
+      }
+
+      // Update order with response, status, and potentially custom price
+      const { error: orderError } = await supabase
+        .from("orders")
+        .update(updateData)
+        .eq("id", selectedOrder.id);
+
+      if (orderError) throw orderError;
+
+      // Create notification for customer
+      let notificationMessage = sanitizedResponse || `Your order status has been updated to ${newStatus || selectedOrder.status}`;
+      if (sanitizedPrice !== null) {
+        notificationMessage = `Your order has been priced at ${formatPrice(sanitizedPrice)}. ${sanitizedResponse || "Please proceed with payment."}`;
+      }
+
+      // Truncate notification message for storage
+      const truncatedTitle = (sanitizedPrice !== null 
+        ? `Price Set: ${selectedOrder.package_name}` 
+        : `Order Update: ${selectedOrder.package_name}`
+      ).slice(0, 255);
+
+      const { error: notifError } = await supabase
+        .from("notifications")
+        .insert({
+          user_id: selectedOrder.user_id,
+          order_id: selectedOrder.id,
+          title: truncatedTitle,
+          message: notificationMessage.slice(0, 2000),
+        });
+
+      if (notifError) throw notifError;
+
+      toast({
+        title: "Response sent",
+        description: "Customer has been notified",
+      });
+
+      setSelectedOrder(null);
+      setResponse("");
+      setNewStatus("");
+      setCustomPrice("");
+      fetchOrders();
+    } catch (error: any) {
+      toast({
+        title: "Error sending response",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const filteredOrders = orders.filter((order) => {
+    const matchesSearch =
+      order.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.customer_email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.package_name.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesStatus = statusFilter === "all" || order.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
+      pending_payment: { variant: "outline", label: "Pending Payment" },
+      waiting_for_price: { variant: "outline", label: "Waiting for Price" },
+      price_sent: { variant: "secondary", label: "Price Sent" },
+      paid: { variant: "default", label: "Paid" },
+      processing: { variant: "secondary", label: "Processing" },
+      ready_for_delivery: { variant: "default", label: "Ready for Delivery" },
+      out_for_delivery: { variant: "default", label: "Out for Delivery" },
+      delivered: { variant: "default", label: "Delivered" },
+      cancelled: { variant: "destructive", label: "Cancelled" },
+      pending: { variant: "outline", label: "Pending" },
+      confirmed: { variant: "default", label: "Confirmed" },
+    };
+    const config = statusConfig[status] || { variant: "outline" as const, label: status };
+    return <Badge variant={config.variant}>{config.label}</Badge>;
+  };
+
+  const handleVerifyPayment = async (orderId: string, approved: boolean) => {
+    try {
+      const newStatus = approved ? "paid" : "pending_payment";
+      const { error } = await supabase
+        .from("orders")
+        .update({
+          payment_status: approved ? "paid" : "rejected",
+          payment_verified_at: approved ? new Date().toISOString() : null,
+          status: approved ? "processing" : "pending_payment",
+        })
+        .eq("id", orderId);
+
+      if (error) throw error;
+
+      // Get order details for notification
+      const order = orders.find((o) => o.id === orderId);
+      if (order) {
+        await supabase.from("notifications").insert({
+          user_id: order.user_id,
+          order_id: orderId,
+          title: approved ? "Payment Verified ✓" : "Payment Rejected",
+          message: approved
+            ? "Your payment has been verified. Your order is now being processed."
+            : "Your payment proof was rejected. Please upload a valid proof or contact support.",
+        });
+      }
+
+      toast({
+        title: approved ? "Payment verified" : "Payment rejected",
+        description: approved ? "Order moved to processing" : "Customer has been notified",
+      });
+
+      fetchOrders();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+    <AdminLayout>
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-display font-bold">Orders</h1>
+            <p className="text-muted-foreground">Manage customer orders and respond to inquiries</p>
+          </div>
+          <Button onClick={fetchOrders} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name, email, or package..."
+              className="pl-10"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="pending_payment">Pending Payment</SelectItem>
+              <SelectItem value="waiting_for_price">Waiting for Price</SelectItem>
+              <SelectItem value="price_sent">Price Sent</SelectItem>
+              <SelectItem value="paid">Paid</SelectItem>
+              <SelectItem value="processing">Processing</SelectItem>
+              <SelectItem value="ready_for_delivery">Ready for Delivery</SelectItem>
+              <SelectItem value="out_for_delivery">Out for Delivery</SelectItem>
+              <SelectItem value="delivered">Delivered</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        ) : filteredOrders.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 px-4 border-2 border-dashed border-border rounded-lg bg-card">
+            <ShoppingCart className="h-16 w-16 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No orders found</h3>
+            <p className="text-muted-foreground text-center max-w-md">
+              {searchQuery || statusFilter !== "all"
+                ? "No orders match your search criteria."
+                : "You haven't received any orders yet."}
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-4">
+            {filteredOrders.map((order) => (
+              <Card key={order.id}>
+                <CardContent className="p-6">
+                  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                    <div className="space-y-2 flex-1">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-mono text-sm text-primary font-semibold mb-1">
+                            {order.custom_order_id || order.id.slice(0, 8).toUpperCase()}
+                          </p>
+                          <h3 className="font-semibold text-lg">{order.package_name}</h3>
+                          {order.package_class && (
+                            <p className="text-sm text-muted-foreground">Class: {order.package_class}</p>
+                          )}
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          {getStatusBadge(order.status)}
+                          {order.payment_status && order.payment_status !== "pending_payment" && (
+                            <Badge variant={order.payment_status === "paid" ? "default" : "outline"} className="text-xs">
+                              {order.payment_status === "paid" ? "💳 Paid" : order.payment_status}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Customer:</span>{" "}
+                          <span className="font-medium">{order.customer_name}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Email:</span>{" "}
+                          <span className="font-medium">{order.customer_email}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">WhatsApp:</span>{" "}
+                          <a
+                            href={`https://wa.me/${order.customer_whatsapp.replace(/\D/g, "")}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-primary hover:underline"
+                          >
+                            {order.customer_whatsapp}
+                          </a>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Quantity:</span>{" "}
+                          <span className="font-medium">{order.quantity}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Payment:</span>{" "}
+                          <span className="font-medium">{order.payment_method}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Total:</span>{" "}
+                          <span className="font-medium text-primary">
+                            {formatPrice(order.admin_set_price || order.final_price)}
+                          </span>
+                          {order.admin_set_price && (
+                            <span className="ml-1 text-xs text-success">(Custom)</span>
+                          )}
+                        </div>
+                      </div>
+                      {order.notes && (
+                        <p className="text-sm">
+                          <span className="text-muted-foreground">Notes:</span> {order.notes}
+                        </p>
+                      )}
+                      {order.custom_request && (
+                        <div className="p-3 mt-2 rounded-lg bg-primary/5 border border-primary/20">
+                          <p className="text-sm font-medium text-primary">Custom Request:</p>
+                          <p className="text-sm">{order.custom_request}</p>
+                        </div>
+                      )}
+                      
+                      {/* Payment Proof Section */}
+                      {order.payment_proof_url && order.payment_status === "proof_uploaded" && (
+                        <div className="p-3 mt-2 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-sm font-medium text-amber-700 flex items-center gap-2">
+                              {order.payment_proof_type === "video" ? (
+                                <Video className="h-4 w-4" />
+                              ) : (
+                                <Image className="h-4 w-4" />
+                              )}
+                              Payment Proof Uploaded
+                            </p>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-success border-success hover:bg-success/10"
+                                onClick={() => handleVerifyPayment(order.id, true)}
+                              >
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-destructive border-destructive hover:bg-destructive/10"
+                                onClick={() => handleVerifyPayment(order.id, false)}
+                              >
+                                <XCircle className="h-3 w-3 mr-1" />
+                                Reject
+                              </Button>
+                            </div>
+                          </div>
+                          {order.payment_proof_type === "video" ? (
+                            <video
+                              src={order.payment_proof_url}
+                              controls
+                              className="w-full max-h-32 rounded object-contain bg-black"
+                            />
+                          ) : (
+                            <img
+                              src={order.payment_proof_url}
+                              alt="Payment proof"
+                              className="w-full max-h-32 rounded object-contain bg-muted"
+                            />
+                          )}
+                        </div>
+                      )}
+                      
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {new Date(order.created_at).toLocaleDateString("en-NG", {
+                          dateStyle: "medium",
+                        })}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedOrder(order);
+                              setResponse(order.admin_response || "");
+                              setNewStatus(order.status);
+                              setCustomPrice(order.admin_set_price?.toString() || "");
+                            }}
+                          >
+                            <MessageSquare className="h-4 w-4 mr-2" />
+                            Respond
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                          <DialogHeader>
+                            <DialogTitle>Respond to Order</DialogTitle>
+                          </DialogHeader>
+                          <div className="grid gap-4 lg:grid-cols-2">
+                            <div className="space-y-4">
+                              <div className="p-4 rounded-lg bg-muted/50 space-y-2">
+                                <p className="font-medium">{order.package_name}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  Customer: {order.customer_name}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  Current Price: {formatPrice(order.final_price)}
+                                </p>
+                                {order.custom_request && (
+                                  <div className="pt-2 border-t">
+                                    <p className="text-xs text-primary font-medium">Custom Request:</p>
+                                    <p className="text-sm">{order.custom_request}</p>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label>Update Status</Label>
+                                <Select value={newStatus} onValueChange={setNewStatus}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select status" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="pending_payment">Pending Payment</SelectItem>
+                                    <SelectItem value="waiting_for_price">Waiting for Price</SelectItem>
+                                    <SelectItem value="price_sent">Price Sent</SelectItem>
+                                    <SelectItem value="paid">Paid</SelectItem>
+                                    <SelectItem value="processing">Processing</SelectItem>
+                                    <SelectItem value="ready_for_delivery">Ready for Delivery</SelectItem>
+                                    <SelectItem value="out_for_delivery">Out for Delivery</SelectItem>
+                                    <SelectItem value="delivered">Delivered</SelectItem>
+                                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              {/* Custom Price Setting - especially for Custom orders */}
+                              <div className="space-y-2">
+                                <Label className="flex items-center gap-2">
+                                  <DollarSign className="h-4 w-4" />
+                                  Set Final Price (₦)
+                                </Label>
+                                <Input
+                                  type="number"
+                                  placeholder="Enter final price..."
+                                  value={customPrice}
+                                  onChange={(e) => setCustomPrice(e.target.value)}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                  Set a custom price for this order. Customer will be notified.
+                                </p>
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label>Message to Customer</Label>
+                                <Textarea
+                                  placeholder="Enter your response..."
+                                  value={response}
+                                  onChange={(e) => setResponse(e.target.value)}
+                                  rows={4}
+                                />
+                              </div>
+
+                              <Button
+                                className="w-full"
+                                onClick={handleRespond}
+                                disabled={isSubmitting}
+                              >
+                                {isSubmitting ? "Sending..." : "Send Response"}
+                              </Button>
+                            </div>
+
+                            {/* Chat Section */}
+                            <div>
+                              <OrderChat orderId={order.id} isAdmin={true} />
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    </AdminLayout>
+  );
+}
