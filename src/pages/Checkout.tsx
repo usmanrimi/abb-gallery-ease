@@ -35,7 +35,7 @@ export default function Checkout() {
   const [deliveryDate, setDeliveryDate] = useState("");
   const [deliveryTime, setDeliveryTime] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Customer contact information
   const [customerInfo, setCustomerInfo] = useState({
     fullName: "",
@@ -66,7 +66,7 @@ export default function Checkout() {
   const selectedPlan = discountPlans.find((p) => p.id === paymentPlan);
   const discountAmount = selectedPlan ? totalPrice * selectedPlan.discount : 0;
   const finalPrice = totalPrice - discountAmount;
-  
+
   const monthlyPayment = paymentPlan !== "one-time" && selectedPlan
     ? finalPrice / parseInt(paymentPlan)
     : 0;
@@ -118,9 +118,51 @@ export default function Checkout() {
 
   const isFormValid = customerInfo.fullName.trim() && customerInfo.email.trim() && customerInfo.whatsappNumber.trim();
 
-  const handleSubmit = async () => {
-    // Validate all inputs
+  const handlePaystackPayment = () => {
+    // Validate all inputs first
     if (!validateForm()) {
+      const firstError = Object.values(validationErrors)[0];
+      toast({
+        title: "Validation Error",
+        description: firstError || "Please check your input and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!user) {
+      toast({
+        title: "Please login to pay",
+        description: "You need to be logged in to place an order.",
+        variant: "destructive",
+      });
+      navigate("/login", { state: { from: location } });
+      return;
+    }
+
+    const paystack = new (window as any).PaystackPop();
+    paystack.newTransaction({
+      key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
+      email: customerInfo.email,
+      amount: Math.round(finalPrice * 100), // Amount in Kobo
+      currency: "NGN",
+      ref: "" + Math.floor(Math.random() * 1000000000 + 1),
+      onSuccess: (transaction: any) => {
+        handleSubmit(transaction);
+      },
+      onCancel: () => {
+        toast({
+          title: "Payment Cancelled",
+          description: "You cancelled the payment process.",
+          variant: "default",
+        });
+      },
+    });
+  };
+
+  const handleSubmit = async (paymentData?: any) => {
+    // Validate all inputs (redundant for Paystack flow but needed for Custom flow)
+    if (!paymentData && !validateForm()) {
       const firstError = Object.values(validationErrors)[0];
       toast({
         title: "Validation Error",
@@ -141,7 +183,7 @@ export default function Checkout() {
     }
 
     setIsSubmitting(true);
-    
+
     try {
       // Sanitize inputs before submission
       const sanitizedCustomerName = customerInfo.fullName.trim().slice(0, 100);
@@ -149,16 +191,31 @@ export default function Checkout() {
       const sanitizedWhatsapp = customerInfo.whatsappNumber.trim().slice(0, 20);
       const sanitizedDeliveryTime = deliveryTime?.trim().slice(0, 100) || null;
 
+      // Check if any items are custom orders
+      const hasCustomOrders = cartItems.some(
+        (item) => item.selectedClass?.id === "custom" || !!item.customRequest
+      );
+
       // Create an order for each cart item
       const orderPromises = cartItems.map((item) => {
         const sanitizedNotes = item.notes?.trim().slice(0, 1000) || null;
         const sanitizedCustomRequest = item.customRequest?.trim().slice(0, 2000) || null;
         const isCustomOrder = item.selectedClass?.id === "custom" || !!item.customRequest;
-        
-        // For custom orders, set status to 'waiting_for_price' (awaiting admin price)
-        // For class-based orders with fixed prices, set status to 'pending_payment'
-        const orderStatus = isCustomOrder ? "waiting_for_price" : "pending_payment";
-        const paymentStatus = isCustomOrder ? "waiting_for_price" : "pending_payment";
+
+        let orderStatus = "pending_payment";
+        let paymentStatus = "pending";
+        let paymentReference = null;
+
+        if (isCustomOrder) {
+          orderStatus = "waiting_for_price";
+          paymentStatus = "waiting_for_price";
+        } else if (paymentData) {
+          // Successful Paystack payment
+          orderStatus = "paid";
+          paymentStatus = "paid";
+          paymentReference = paymentData.reference;
+        }
+
         const itemTotal = item.unitPrice * item.quantity;
         const itemDiscount = itemTotal * (selectedPlan?.discount || 0);
         const itemFinal = itemTotal - itemDiscount;
@@ -175,6 +232,7 @@ export default function Checkout() {
           discount_amount: itemDiscount,
           payment_method: paymentPlan,
           payment_status: paymentStatus,
+          payment_reference: paymentReference,
           installment_plan: paymentPlan !== "one-time" ? paymentPlan : null,
           delivery_date: deliveryDate || null,
           delivery_time: sanitizedDeliveryTime,
@@ -195,11 +253,6 @@ export default function Checkout() {
       // Clear cart after successful order
       clearCart();
 
-      // Check if any items are custom orders
-      const hasCustomOrders = cartItems.some(
-        (item) => item.selectedClass?.id === "custom" || !!item.customRequest
-      );
-
       navigate("/order-confirmation", {
         state: {
           cartItems,
@@ -211,6 +264,7 @@ export default function Checkout() {
           finalPrice,
           customerInfo,
           hasCustomOrders,
+          paymentReference: paymentData?.reference,
         },
       });
     } catch (error: any) {
@@ -223,6 +277,14 @@ export default function Checkout() {
       setIsSubmitting(false);
     }
   };
+
+  // Check if we need to show Quote flow vs Pay flow
+  const hasCustomOrders = cartItems.some(
+    (item) => item.selectedClass?.id === "custom" || !!item.customRequest
+  );
+
+  // Can pay immediately if no custom orders AND paying one-time
+  const canPayImmediately = !hasCustomOrders && paymentPlan === "one-time";
 
   return (
     <Layout>
@@ -506,14 +568,21 @@ export default function Checkout() {
                 <Button
                   className="w-full"
                   size="lg"
-                  onClick={handleSubmit}
+                  onClick={canPayImmediately ? handlePaystackPayment : () => handleSubmit()}
                   disabled={isSubmitting || !isFormValid}
                 >
-                  {isSubmitting ? "Submitting..." : "Submit Order"}
+                  {isSubmitting
+                    ? "Processing..."
+                    : canPayImmediately
+                      ? "Pay Now"
+                      : "Request Quote / Submit"
+                  }
                 </Button>
 
                 <p className="text-xs text-center text-muted-foreground">
-                  By submitting, you agree to our terms and conditions
+                  {canPayImmediately
+                    ? "Secure payment via Paystack"
+                    : "Admin will review your custom request and set a price."}
                 </p>
               </CardContent>
             </Card>

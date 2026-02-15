@@ -24,10 +24,7 @@ import About from "./pages/About";
 import Contact from "./pages/Contact";
 import CustomerDashboard from "./pages/CustomerDashboard";
 import AdminDashboard from "./pages/admin/AdminDashboard";
-<<<<<<< HEAD
 import AdminCategories from "./pages/admin/AdminCategories";
-=======
->>>>>>> 1159a076ff4118cb5b2a359532a81d648d57a238
 import AdminPackages from "./pages/admin/AdminPackages";
 import AdminCustomers from "./pages/admin/AdminCustomers";
 import AdminOrders from "./pages/admin/AdminOrders";
@@ -39,6 +36,7 @@ import SuperAdminManagement from "./pages/superadmin/SuperAdminManagement";
 import SuperAdminAuditLog from "./pages/superadmin/SuperAdminAuditLog";
 import SuperAdminSettings from "./pages/superadmin/SuperAdminSettings";
 import SuperAdminCustomers from "./pages/superadmin/SuperAdminCustomers";
+import SuperAdminQA from "./pages/superadmin/SuperAdminQA";
 import SuperAdminAnalytics from "./pages/superadmin/SuperAdminAnalytics";
 
 const queryClient = new QueryClient();
@@ -48,7 +46,6 @@ const App = () => (
     <AuthProvider>
       <CartProvider>
         <TooltipProvider>
-<<<<<<< HEAD
           <Toaster />
           <Sonner />
           <BrowserRouter>
@@ -157,6 +154,11 @@ const App = () => (
                   <SuperAdminCustomers />
                 </ProtectedRoute>
               } />
+              <Route path="/super-admin/qa" element={
+                <ProtectedRoute allowedRole="super_admin">
+                  <SuperAdminQA />
+                </ProtectedRoute>
+              } />
               <Route path="/super-admin/analytics" element={
                 <ProtectedRoute allowedRole="super_admin">
                   <SuperAdminAnalytics />
@@ -177,131 +179,6 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
-=======
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<Index />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/admin/login" element={<AdminLogin />} />
-            <Route path="/categories" element={<Categories />} />
-            <Route path="/categories/:slug" element={<CategoryDetail />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/contact" element={<Contact />} />
-            
-            {/* Protected Routes - Require Login */}
-            <Route path="/package/:id" element={
-              <ProtectedRoute>
-                <PackageDetail />
-              </ProtectedRoute>
-            } />
-            <Route path="/cart" element={
-              <ProtectedRoute>
-                <Cart />
-              </ProtectedRoute>
-            } />
-            <Route path="/checkout" element={
-              <ProtectedRoute>
-                <Checkout />
-              </ProtectedRoute>
-            } />
-            <Route path="/order-confirmation" element={
-              <ProtectedRoute>
-                <OrderConfirmation />
-              </ProtectedRoute>
-            } />
-            <Route path="/orders" element={
-              <ProtectedRoute>
-                <Orders />
-              </ProtectedRoute>
-            } />
-            
-            {/* Protected Customer Routes */}
-            <Route path="/dashboard" element={
-              <ProtectedRoute allowedRole="customer">
-                <CustomerDashboard />
-              </ProtectedRoute>
-            } />
-            
-            {/* Protected Admin Routes */}
-            <Route path="/admin" element={
-              <ProtectedRoute allowedRole="admin_ops">
-                <AdminDashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/packages" element={
-              <ProtectedRoute allowedRole="admin_ops">
-                <AdminPackages />
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/customers" element={
-              <ProtectedRoute allowedRole="admin_ops">
-                <AdminCustomers />
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/orders" element={
-              <ProtectedRoute allowedRole="admin_ops">
-                <AdminOrders />
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/deliveries" element={
-              <ProtectedRoute allowedRole="admin_ops">
-                <AdminDeliveries />
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/reports" element={
-              <ProtectedRoute allowedRole="admin_ops">
-                <AdminReports />
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/settings" element={
-              <ProtectedRoute allowedRole="admin_ops">
-                <AdminSettings />
-              </ProtectedRoute>
-            } />
-
-            {/* Protected Super Admin Routes */}
-            <Route path="/super-admin" element={
-              <ProtectedRoute allowedRole="super_admin">
-                <SuperAdminDashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/super-admin/admins" element={
-              <ProtectedRoute allowedRole="super_admin">
-                <SuperAdminManagement />
-              </ProtectedRoute>
-            } />
-            <Route path="/super-admin/customers" element={
-              <ProtectedRoute allowedRole="super_admin">
-                <SuperAdminCustomers />
-              </ProtectedRoute>
-            } />
-            <Route path="/super-admin/analytics" element={
-              <ProtectedRoute allowedRole="super_admin">
-                <SuperAdminAnalytics />
-              </ProtectedRoute>
-            } />
-            <Route path="/super-admin/audit-log" element={
-              <ProtectedRoute allowedRole="super_admin">
-                <SuperAdminAuditLog />
-              </ProtectedRoute>
-            } />
-            <Route path="/super-admin/settings" element={
-              <ProtectedRoute allowedRole="super_admin">
-                <SuperAdminSettings />
-              </ProtectedRoute>
-            } />
-            
-            {/* Catch-all */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
->>>>>>> 1159a076ff4118cb5b2a359532a81d648d57a238
         </TooltipProvider>
       </CartProvider>
     </AuthProvider>
