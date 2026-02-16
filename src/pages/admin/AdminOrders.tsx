@@ -12,7 +12,6 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { formatPrice } from "@/data/categories";
 import { ShoppingCart, MessageSquare, Search, Calendar, RefreshCw, DollarSign, Image, Video, CheckCircle, XCircle } from "lucide-react";
-import { OrderChat } from "@/components/order/OrderChat";
 import { adminResponseSchema, customPriceSchema, validateInput } from "@/lib/validations";
 import { useAuditLog } from "@/hooks/useAuditLog";
 
@@ -33,7 +32,6 @@ interface Order {
   payment_status: string | null;
   payment_proof_url: string | null;
   payment_proof_type: string | null;
-  installment_plan: string | null;
   delivery_date: string | null;
   delivery_time: string | null;
   customer_name: string;
@@ -555,10 +553,6 @@ export default function AdminOrders() {
                               </Button>
                             </div>
 
-                            {/* Chat Section */}
-                            <div>
-                              <OrderChat orderId={order.id} isAdmin={true} />
-                            </div>
                           </div>
                         </DialogContent>
                       </Dialog>

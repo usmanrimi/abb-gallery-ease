@@ -33,6 +33,7 @@ import AdminOrders from "./pages/admin/AdminOrders";
 import AdminDeliveries from "./pages/admin/AdminDeliveries";
 import AdminReports from "./pages/admin/AdminReports";
 import AdminSettings from "./pages/admin/AdminSettings";
+import AdminChat from "./pages/admin/AdminChat";
 import SuperAdminDashboard from "./pages/superadmin/SuperAdminDashboard";
 import SuperAdminManagement from "./pages/superadmin/SuperAdminManagement";
 import SuperAdminAuditLog from "./pages/superadmin/SuperAdminAuditLog";
@@ -133,6 +134,11 @@ const App = () => (
               <Route path="/admin/deliveries" element={
                 <ProtectedRoute allowedRole="admin_ops">
                   <AdminDeliveries />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/chat" element={
+                <ProtectedRoute allowedRole="admin_ops">
+                  <AdminChat />
                 </ProtectedRoute>
               } />
               <Route path="/admin/reports" element={

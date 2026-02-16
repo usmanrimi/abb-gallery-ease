@@ -34,20 +34,31 @@ export default function SuperAdminManagement() {
   const fetchAdmins = async () => {
     setLoading(true);
     try {
-      // Get all profiles with admin roles
-      const { data: profiles, error } = await supabase
-        .from("profiles")
-        .select("id, full_name, email, role")
+      // Get all users with admin roles from user_roles table, joined with profiles
+      const { data: roleData, error } = await supabase
+        .from("user_roles")
+        .select("user_id, role")
         .in("role", ["admin_ops", "super_admin"]);
 
       if (error) throw error;
 
-      const adminList = (profiles || []).map(p => ({
-        user_id: p.id,
-        role: p.role,
-        full_name: p.full_name || null,
-        email: p.email || null,
-      }));
+      // Fetch profile info for these users
+      const userIds = (roleData || []).map(r => r.user_id);
+      const { data: profiles } = userIds.length
+        ? await supabase.from("profiles").select("id, full_name, email").in("id", userIds)
+        : { data: [] };
+
+      const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+
+      const adminList = (roleData || []).map(r => {
+        const profile = profileMap.get(r.user_id);
+        return {
+          user_id: r.user_id,
+          role: r.role,
+          full_name: profile?.full_name || null,
+          email: profile?.email || null,
+        };
+      });
 
       setAdmins(adminList);
     } catch (error) {
@@ -76,40 +87,65 @@ export default function SuperAdminManagement() {
       if (signUpError) throw signUpError;
 
       if (signUpData.user) {
-        // Update the role in profiles table - This is the Single Source of Truth
-        // Note: The profile row is usually created by a trigger on auth.users, 
-        // but we need to ensure the role is updated
+        const userId = signUpData.user.id;
 
-        // Wait a moment for trigger to create profile if it exists, otherwise insert/update
-        setTimeout(async () => {
-          const { error: roleError } = await supabase
+        // Wait for auth trigger to create profile (retry up to 5 times)
+        let profileReady = false;
+        for (let attempt = 0; attempt < 5; attempt++) {
+          const { data: profile } = await supabase
             .from("profiles")
-            .update({
-              role: newAdmin.role as any,
-              full_name: newAdmin.fullName
-            })
-            .eq("id", signUpData.user!.id);
+            .select("id")
+            .eq("id", userId)
+            .maybeSingle();
 
-          if (roleError) {
-            console.error("Error updating profile role:", roleError);
-            toast.error("User created but failed to assign role. Please try updating role manually.");
-          } else {
-            // Log the action
-            await supabase.from("audit_log").insert({
-              user_id: user!.id,
-              user_name: user?.user_metadata?.full_name || user?.email || "Unknown",
-              action: "create_admin",
-              entity_type: "user",
-              entity_id: signUpData.user!.id,
-              details: `Created ${newAdmin.role} account for ${newAdmin.email}`,
-            });
-
-            toast.success(`${newAdmin.role === "super_admin" ? "Super Admin" : "Admin Operations"} account created!`);
-            setDialogOpen(false);
-            setNewAdmin({ email: "", password: "", fullName: "", role: "admin_ops" });
-            fetchAdmins();
+          if (profile) {
+            profileReady = true;
+            break;
           }
-        }, 1000);
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+
+        // If profile wasn't created by trigger, create it manually
+        if (!profileReady) {
+          await supabase.from("profiles").upsert({
+            id: userId,
+            full_name: newAdmin.fullName,
+            email: newAdmin.email,
+          });
+        } else {
+          await supabase
+            .from("profiles")
+            .update({ full_name: newAdmin.fullName })
+            .eq("id", userId);
+        }
+
+        // Assign role via user_roles table (upsert to handle duplicates)
+        const { error: roleError } = await supabase
+          .from("user_roles")
+          .upsert(
+            { user_id: userId, role: newAdmin.role as any },
+            { onConflict: "user_id" }
+          );
+
+        if (roleError) {
+          console.error("Error assigning role:", roleError);
+          toast.error("User created but failed to assign role. Please try updating role manually.");
+        } else {
+          // Log the action
+          await supabase.from("audit_log").insert({
+            user_id: user!.id,
+            user_name: user?.user_metadata?.full_name || user?.email || "Unknown",
+            action: "create_admin",
+            entity_type: "user",
+            entity_id: userId,
+            details: `Created ${newAdmin.role} account for ${newAdmin.email}`,
+          });
+
+          toast.success(`${newAdmin.role === "super_admin" ? "Super Admin" : "Admin Operations"} account created!`);
+          setDialogOpen(false);
+          setNewAdmin({ email: "", password: "", fullName: "", role: "admin_ops" });
+          fetchAdmins();
+        }
       }
     } catch (error: any) {
       toast.error(error.message || "Failed to create admin");
@@ -121,9 +157,9 @@ export default function SuperAdminManagement() {
   const handleChangeRole = async (userId: string, newRole: string) => {
     try {
       const { error } = await supabase
-        .from("profiles")
+        .from("user_roles")
         .update({ role: newRole as any })
-        .eq("id", userId);
+        .eq("user_id", userId);
 
       if (error) throw error;
 
@@ -150,9 +186,9 @@ export default function SuperAdminManagement() {
     }
     try {
       const { error } = await supabase
-        .from("profiles")
+        .from("user_roles")
         .update({ role: "customer" as any })
-        .eq("id", userId);
+        .eq("user_id", userId);
 
       if (error) throw error;
 

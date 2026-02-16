@@ -13,6 +13,7 @@ import {
   Menu,
   X,
   ChevronLeft,
+  MessageCircle,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,7 @@ const navItems = [
   { href: "/admin/customers", label: "Customers", icon: Users },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { href: "/admin/deliveries", label: "Deliveries", icon: Truck },
+  { href: "/admin/chat", label: "Chat", icon: MessageCircle },
   { href: "/admin/categories", label: "Categories", icon: Package },
   { href: "/admin/reports", label: "Reports", icon: BarChart3 },
   { href: "/admin/settings", label: "Settings", icon: Settings },

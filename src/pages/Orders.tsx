@@ -5,12 +5,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Package, Clock, CheckCircle2, Truck, ChevronRight, MessageCircle, Loader2, CreditCard, Upload, Wallet } from "lucide-react";
+import { Package, Clock, CheckCircle2, Truck, ChevronRight, Loader2, CreditCard, Upload, Wallet, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatPrice } from "@/data/categories";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { OrderChat } from "@/components/order/OrderChat";
 import { PaymentInstructions } from "@/components/order/PaymentInstructions";
 import { PaymentProofUpload } from "@/components/order/PaymentProofUpload";
 
@@ -159,6 +158,7 @@ export default function Orders() {
           callback_url: `${window.location.origin}/orders`,
           metadata: {
             customer_name: user.user_metadata?.full_name || "",
+            custom_order_id: order.custom_order_id || "",
             package: order.package_name,
           },
         },
@@ -317,8 +317,8 @@ export default function Orders() {
                         <Dialog>
                           <DialogTrigger asChild>
                             <Button variant="outline" size="sm" onClick={() => setSelectedOrder(order)}>
-                              <MessageCircle className="h-4 w-4 mr-2" />
-                              Details & Chat
+                              <Eye className="h-4 w-4 mr-2" />
+                              Details
                             </Button>
                           </DialogTrigger>
                           <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -369,9 +369,6 @@ export default function Orders() {
                                   </p>
                                 </div>
                               )}
-
-                              {/* Chat */}
-                              <OrderChat orderId={order.id} isAdmin={false} />
                             </div>
                           </DialogContent>
                         </Dialog>
@@ -380,36 +377,38 @@ export default function Orders() {
 
                     {/* Progress */}
                     <div className="mt-6 pt-4 border-t">
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-2 text-sm">
-                          {Object.entries(statusConfig).map(([key, config], index) => {
-                            const Icon = config.icon;
-                            const statusOrder = ["pending", "processing", "confirmed", "delivered"];
-                            const currentIndex = statusOrder.indexOf(order.status);
-                            const isActive = currentIndex >= index;
-                            return (
-                              <div key={key} className="flex items-center gap-2">
-                                <div
-                                  className={`flex h-8 w-8 items-center justify-center rounded-full ${isActive
-                                      ? "bg-primary text-primary-foreground"
-                                      : "bg-muted text-muted-foreground"
-                                    }`}
-                                >
-                                  <Icon className="h-4 w-4" />
+                      {(() => {
+                        const progressSteps = [
+                          { key: "paid", label: "Paid", icon: CreditCard },
+                          { key: "processing", label: "Processing", icon: Package },
+                          { key: "ready_for_delivery", label: "Ready", icon: Truck },
+                          { key: "delivered", label: "Delivered", icon: CheckCircle2 },
+                        ];
+                        const statusOrder = ["pending", "pending_payment", "waiting_for_price", "price_sent", "paid", "processing", "ready_for_delivery", "out_for_delivery", "delivered"];
+                        const currentIdx = statusOrder.indexOf(order.status);
+                        return (
+                          <div className="flex items-center gap-1">
+                            {progressSteps.map((step, index) => {
+                              const stepIdx = statusOrder.indexOf(step.key);
+                              const isActive = currentIdx >= stepIdx;
+                              const StepIcon = step.icon;
+                              return (
+                                <div key={step.key} className="flex items-center gap-1">
+                                  <div className="flex flex-col items-center gap-1">
+                                    <div className={`flex h-8 w-8 items-center justify-center rounded-full ${isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                                      <StepIcon className="h-4 w-4" />
+                                    </div>
+                                    <span className="text-[10px] text-muted-foreground hidden sm:block">{step.label}</span>
+                                  </div>
+                                  {index < progressSteps.length - 1 && (
+                                    <div className={`h-0.5 w-6 sm:w-10 ${currentIdx > stepIdx ? "bg-primary" : "bg-muted"}`} />
+                                  )}
                                 </div>
-                                {index < Object.keys(statusConfig).length - 1 && (
-                                  <div
-                                    className={`h-0.5 w-8 sm:w-12 ${currentIndex > index
-                                        ? "bg-primary"
-                                        : "bg-muted"
-                                      }`}
-                                  />
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
                       <p className="text-sm text-muted-foreground mt-2">
                         {status.description}
                       </p>

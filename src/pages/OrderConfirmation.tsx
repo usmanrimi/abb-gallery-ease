@@ -11,11 +11,10 @@ interface OrderConfirmationData {
   cartItems?: CartItem[];
   totalAmount?: number;
   finalPrice?: number;
-  paymentMethod?: string;
-  installmentPlan?: string;
   deliveryDate?: string;
   deliveryTime?: string;
   hasCustomOrders?: boolean;
+  orderIds?: string[];
 }
 
 export default function OrderConfirmation() {
@@ -35,17 +34,17 @@ export default function OrderConfirmation() {
     );
   }
 
-  const { 
-    cartItems, 
-    finalPrice = 0, 
-    paymentMethod, 
-    installmentPlan, 
-    deliveryDate, 
+  const {
+    cartItems,
+    finalPrice = 0,
+    deliveryDate,
     deliveryTime,
-    hasCustomOrders 
+    hasCustomOrders,
+    orderIds,
   } = orderData;
-  
-  const orderId = `ORD-${Date.now().toString(36).toUpperCase()}`;
+
+  // Display the branded order IDs if available
+  const displayOrderId = orderIds?.length ? orderIds[0] : `ORD-${Date.now().toString(36).toUpperCase()}`;
 
   // Separate custom and regular orders
   const customItems = cartItems.filter(
@@ -54,7 +53,7 @@ export default function OrderConfirmation() {
   const regularItems = cartItems.filter(
     item => item.selectedClass?.id !== "custom" && !item.customRequest
   );
-  
+
   // Calculate totals for regular items only
   const regularItemsTotal = regularItems.reduce(
     (sum, item) => sum + item.unitPrice * item.quantity,
@@ -75,14 +74,23 @@ export default function OrderConfirmation() {
             <h1 className="text-3xl font-bold font-display md:text-4xl mb-4">
               Order Received!
             </h1>
-            
+
             <p className="text-lg text-muted-foreground mb-2">
               Thank you for your order. Your order number is:
             </p>
-            
+
             <p className="text-2xl font-mono font-bold text-primary mb-6">
-              {orderId}
+              {displayOrderId}
             </p>
+
+            {orderIds && orderIds.length > 1 && (
+              <div className="text-sm text-muted-foreground mb-4">
+                <p>All order IDs:</p>
+                {orderIds.map((id, i) => (
+                  <p key={i} className="font-mono font-semibold text-primary">{id}</p>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Custom Orders - Pending Admin Response */}
@@ -100,7 +108,7 @@ export default function OrderConfirmation() {
                     </p>
                   </div>
                 </div>
-                
+
                 <div className="space-y-3">
                   {customItems.map((item) => (
                     <div key={item.id} className="flex items-start gap-3 p-4 rounded-xl bg-background border">
@@ -154,7 +162,7 @@ export default function OrderConfirmation() {
 
                   <div className="border-t pt-6 space-y-4">
                     <h4 className="font-semibold">Order Details</h4>
-                    
+
                     {regularItems.map((item) => (
                       <div key={item.id} className="flex items-start gap-3 p-4 rounded-xl bg-muted/50">
                         <Package className="h-5 w-5 text-primary mt-0.5" />
@@ -168,13 +176,6 @@ export default function OrderConfirmation() {
                         <p className="font-medium">{formatPrice(item.unitPrice * item.quantity)}</p>
                       </div>
                     ))}
-                    
-                    <div className="p-4 rounded-xl bg-muted/50">
-                      <p className="text-sm text-muted-foreground mb-1">Payment Method</p>
-                      <p className="font-medium">
-                        {paymentMethod === "one-time" ? "One-Time Payment" : `Installment (${paymentMethod?.replace("-", " ")})`}
-                      </p>
-                    </div>
 
                     {(deliveryDate || deliveryTime) && (
                       <div className="p-4 rounded-xl bg-muted/50">
@@ -212,7 +213,7 @@ export default function OrderConfirmation() {
                   <div>
                     <h3 className="font-semibold text-lg">What happens next?</h3>
                     <p className="text-muted-foreground">
-                      Our team will review your custom request and send you the final price within <strong>24 hours</strong>. 
+                      Our team will review your custom request and send you the final price within <strong>24 hours</strong>.
                       You'll receive payment instructions once the price is confirmed.
                     </p>
                   </div>
