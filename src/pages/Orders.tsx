@@ -5,7 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Package, Clock, CheckCircle2, Truck, ChevronRight, MessageCircle, Loader2, CreditCard, Upload } from "lucide-react";
+import { Package, Clock, CheckCircle2, Truck, ChevronRight, MessageCircle, Loader2, CreditCard, Upload, Wallet } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { formatPrice } from "@/data/categories";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -101,9 +102,11 @@ const statusConfig: Record<string, { label: string; icon: any; variant: "default
 
 export default function Orders() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [payingOrderId, setPayingOrderId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -130,6 +133,56 @@ export default function Orders() {
 
   const getDisplayPrice = (order: Order) => {
     return order.admin_set_price || order.final_price;
+  };
+
+  const canPayNow = (order: Order) => {
+    return (
+      order.admin_set_price &&
+      order.admin_set_price > 0 &&
+      (order.status === "price_sent" || order.status === "pending_payment" || order.status === "waiting_for_price") &&
+      order.payment_status !== "paid" &&
+      order.payment_status !== "proof_uploaded"
+    );
+  };
+
+  const handlePayNow = async (order: Order) => {
+    if (!user) return;
+    setPayingOrderId(order.id);
+    try {
+      const amount = order.admin_set_price || order.final_price;
+      const { data, error } = await supabase.functions.invoke("paystack", {
+        body: {
+          action: "initialize",
+          email: user.email,
+          amount,
+          orderId: order.id,
+          callback_url: `${window.location.origin}/orders`,
+          metadata: {
+            customer_name: user.user_metadata?.full_name || "",
+            package: order.package_name,
+          },
+        },
+      });
+
+      if (error || !data?.authorization_url) {
+        toast({
+          title: "Card payment unavailable",
+          description: data?.message || "Please use bank transfer and upload proof instead.",
+          variant: "default",
+        });
+        return;
+      }
+
+      window.location.href = data.authorization_url;
+    } catch (err: any) {
+      toast({
+        title: "Payment Error",
+        description: err.message || "Something went wrong.",
+        variant: "destructive",
+      });
+    } finally {
+      setPayingOrderId(null);
+    }
   };
 
   if (!user) {
@@ -185,7 +238,7 @@ export default function Orders() {
               const status = statusConfig[order.status as keyof typeof statusConfig] || statusConfig.pending;
               const StatusIcon = status.icon;
               const displayPrice = getDisplayPrice(order);
-              const showPaymentUpload = 
+              const showPaymentUpload =
                 (order.status === "pending_payment" || order.status === "processing" || order.status === "price_sent") &&
                 !order.payment_proof_url;
 
@@ -238,7 +291,7 @@ export default function Orders() {
                         )}
                       </div>
 
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                         <div className="text-right">
                           <p className="text-sm text-muted-foreground">Total</p>
                           <p className="text-xl font-bold text-primary">{formatPrice(displayPrice)}</p>
@@ -246,6 +299,21 @@ export default function Orders() {
                             <p className="text-xs text-success">Price confirmed by admin</p>
                           )}
                         </div>
+                        {canPayNow(order) && (
+                          <Button
+                            size="sm"
+                            onClick={() => handlePayNow(order)}
+                            disabled={payingOrderId === order.id}
+                            className="whitespace-nowrap"
+                          >
+                            {payingOrderId === order.id ? (
+                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            ) : (
+                              <Wallet className="h-4 w-4 mr-1" />
+                            )}
+                            Pay Now
+                          </Button>
+                        )}
                         <Dialog>
                           <DialogTrigger asChild>
                             <Button variant="outline" size="sm" onClick={() => setSelectedOrder(order)}>
@@ -322,21 +390,19 @@ export default function Orders() {
                             return (
                               <div key={key} className="flex items-center gap-2">
                                 <div
-                                  className={`flex h-8 w-8 items-center justify-center rounded-full ${
-                                    isActive
+                                  className={`flex h-8 w-8 items-center justify-center rounded-full ${isActive
                                       ? "bg-primary text-primary-foreground"
                                       : "bg-muted text-muted-foreground"
-                                  }`}
+                                    }`}
                                 >
                                   <Icon className="h-4 w-4" />
                                 </div>
                                 {index < Object.keys(statusConfig).length - 1 && (
                                   <div
-                                    className={`h-0.5 w-8 sm:w-12 ${
-                                      currentIndex > index
+                                    className={`h-0.5 w-8 sm:w-12 ${currentIndex > index
                                         ? "bg-primary"
                                         : "bg-muted"
-                                    }`}
+                                      }`}
                                   />
                                 )}
                               </div>

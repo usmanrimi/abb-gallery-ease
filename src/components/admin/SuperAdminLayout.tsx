@@ -12,6 +12,10 @@ import {
   ChevronLeft,
   ScrollText,
   BarChart3,
+  Package,
+  ShoppingCart,
+  Truck,
+  FolderOpen,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -24,6 +28,10 @@ interface SuperAdminLayoutProps {
 const navItems = [
   { href: "/super-admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/super-admin/admins", label: "Admin Management", icon: Shield },
+  { href: "/super-admin/categories", label: "Categories", icon: FolderOpen },
+  { href: "/super-admin/packages", label: "Packages", icon: Package },
+  { href: "/super-admin/orders", label: "Orders", icon: ShoppingCart },
+  { href: "/super-admin/deliveries", label: "Deliveries", icon: Truck },
   { href: "/super-admin/customers", label: "All Customers", icon: Users },
   { href: "/super-admin/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/super-admin/audit-log", label: "Audit Log", icon: ScrollText },

@@ -142,29 +142,55 @@ CREATE TABLE IF NOT EXISTS public.category_settings (
 );
 ALTER TABLE public.category_settings ENABLE ROW LEVEL SECURITY;
 
--- 2h. audit_log
+-- 2h. audit_log (UPDATED with richer columns)
 CREATE TABLE IF NOT EXISTS public.audit_log (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   actor_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  actor_email TEXT,
+  actor_role TEXT,
   action TEXT NOT NULL,
+  action_type TEXT,
+  target_type TEXT,
+  target_id TEXT,
   target_user_id UUID,
   details TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 ALTER TABLE public.audit_log ENABLE ROW LEVEL SECURITY;
 
--- 2i. order_messages (for OrderChat)
+-- Add missing columns to audit_log if table already exists
+DO $$ BEGIN
+  ALTER TABLE public.audit_log ADD COLUMN IF NOT EXISTS actor_email TEXT;
+  ALTER TABLE public.audit_log ADD COLUMN IF NOT EXISTS actor_role TEXT;
+  ALTER TABLE public.audit_log ADD COLUMN IF NOT EXISTS action_type TEXT;
+  ALTER TABLE public.audit_log ADD COLUMN IF NOT EXISTS target_type TEXT;
+  ALTER TABLE public.audit_log ADD COLUMN IF NOT EXISTS target_id TEXT;
+END $$;
+
+-- 2i. order_messages (UPDATED with sender_role, image_url, is_read)
 CREATE TABLE IF NOT EXISTS public.order_messages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   order_id UUID REFERENCES public.orders(id) ON DELETE CASCADE,
   sender_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  message TEXT NOT NULL,
+  message TEXT,
   is_admin BOOLEAN DEFAULT false,
+  sender_role TEXT DEFAULT 'customer',
+  image_url TEXT,
+  is_read BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 ALTER TABLE public.order_messages ENABLE ROW LEVEL SECURITY;
 
--- 2j. payment_proofs bucket
+-- Add missing columns to order_messages if table already exists
+DO $$ BEGIN
+  ALTER TABLE public.order_messages ADD COLUMN IF NOT EXISTS sender_role TEXT DEFAULT 'customer';
+  ALTER TABLE public.order_messages ADD COLUMN IF NOT EXISTS image_url TEXT;
+  ALTER TABLE public.order_messages ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT false;
+  -- Make message nullable (for image-only messages)
+  ALTER TABLE public.order_messages ALTER COLUMN message DROP NOT NULL;
+END $$;
+
+-- 2j. storage buckets
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('package-images', 'package-images', true)
 ON CONFLICT (id) DO NOTHING;
@@ -370,6 +396,19 @@ CREATE POLICY "Admins insert order messages"
   ON public.order_messages FOR INSERT
   WITH CHECK (public.get_my_role() IN ('admin_ops', 'super_admin'));
 
+CREATE POLICY "Users update own order messages"
+  ON public.order_messages FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.orders o
+      WHERE o.id = order_id AND o.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Admins update order messages"
+  ON public.order_messages FOR UPDATE
+  USING (public.get_my_role() IN ('admin_ops', 'super_admin'));
+
 
 -- ---------- STORAGE ----------
 CREATE POLICY "Public read package images"
@@ -417,5 +456,47 @@ CREATE TRIGGER on_auth_user_created
 
 
 -- ============================================================
--- DONE! All tables, RLS policies, and triggers are set up.
+-- 6. AUTO-CREATE DELIVERY TRIGGER
+-- When order status is set to processing/ready_for_delivery,
+-- automatically create a delivery record if one doesn't exist.
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.auto_create_delivery()
+RETURNS TRIGGER
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NEW.status IN ('processing', 'ready_for_delivery', 'paid') AND
+     OLD.status IS DISTINCT FROM NEW.status THEN
+    INSERT INTO public.deliveries (order_id, custom_order_id, customer_name, customer_whatsapp, package_name, delivery_date, delivery_time, status)
+    VALUES (
+      NEW.id,
+      NEW.custom_order_id,
+      NEW.customer_name,
+      NEW.customer_whatsapp,
+      NEW.package_name,
+      NEW.delivery_date,
+      NEW.delivery_time,
+      CASE WHEN NEW.status = 'ready_for_delivery' THEN 'ready' ELSE 'ready' END
+    )
+    ON CONFLICT DO NOTHING;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+-- Add unique constraint on order_id to support ON CONFLICT
+DO $$ BEGIN
+  ALTER TABLE public.deliveries ADD CONSTRAINT deliveries_order_id_unique UNIQUE (order_id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DROP TRIGGER IF EXISTS on_order_status_change ON public.orders;
+CREATE TRIGGER on_order_status_change
+  AFTER UPDATE ON public.orders
+  FOR EACH ROW EXECUTE FUNCTION public.auto_create_delivery();
+
+
+-- ============================================================
+-- DONE! All tables, RLS policies, triggers, and columns are set up.
 -- ============================================================

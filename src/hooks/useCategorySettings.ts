@@ -3,8 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface CategorySetting {
   id: string;
-  category_slug: string;
-  coming_soon: boolean;
+  category_id: string;
+  is_coming_soon: boolean;
   updated_at: string;
 }
 
@@ -34,27 +34,27 @@ export function useCategorySettings() {
     fetchSettings();
   }, []);
 
-  const isComingSoon = (slug: string): boolean => {
-    const setting = settings.find((s) => s.category_slug === slug);
-    return setting?.coming_soon ?? (slug === "seasonal" || slug === "haihuwa");
+  const isComingSoon = (categoryId: string): boolean => {
+    const setting = settings.find((s) => s.category_id === categoryId);
+    // Default: "3" (Haihuwa) and "4" (Seasonal) are coming soon unless overridden
+    return setting?.is_coming_soon ?? (categoryId === "3" || categoryId === "4");
   };
 
-  const updateComingSoon = async (slug: string, comingSoon: boolean) => {
+  const updateComingSoon = async (categoryId: string, comingSoon: boolean) => {
     try {
-      // Check if setting exists
-      const existing = settings.find((s) => s.category_slug === slug);
-      
+      const existing = settings.find((s) => s.category_id === categoryId);
+
       if (existing) {
         const { error } = await supabase
           .from("category_settings")
-          .update({ coming_soon: comingSoon, updated_at: new Date().toISOString() })
-          .eq("category_slug", slug);
+          .update({ is_coming_soon: comingSoon, updated_at: new Date().toISOString() })
+          .eq("category_id", categoryId);
 
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from("category_settings")
-          .insert({ category_slug: slug, coming_soon: comingSoon });
+          .insert({ category_id: categoryId, is_coming_soon: comingSoon });
 
         if (error) throw error;
       }

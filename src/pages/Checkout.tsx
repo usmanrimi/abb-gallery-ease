@@ -118,7 +118,7 @@ export default function Checkout() {
 
   const isFormValid = customerInfo.fullName.trim() && customerInfo.email.trim() && customerInfo.whatsappNumber.trim();
 
-  const handlePaystackPayment = () => {
+  const handlePaystackPayment = async () => {
     // Validate all inputs first
     if (!validateForm()) {
       const firstError = Object.values(validationErrors)[0];
@@ -140,24 +140,95 @@ export default function Checkout() {
       return;
     }
 
-    const paystack = new (window as any).PaystackPop();
-    paystack.newTransaction({
-      key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
-      email: customerInfo.email,
-      amount: Math.round(finalPrice * 100), // Amount in Kobo
-      currency: "NGN",
-      ref: "" + Math.floor(Math.random() * 1000000000 + 1),
-      onSuccess: (transaction: any) => {
-        handleSubmit(transaction);
-      },
-      onCancel: () => {
+    setIsSubmitting(true);
+    try {
+      // Step 1: Create the order(s) in DB first
+      const sanitizedCustomerName = customerInfo.fullName.trim().slice(0, 100);
+      const sanitizedEmail = customerInfo.email.trim().toLowerCase().slice(0, 255);
+      const sanitizedWhatsapp = customerInfo.whatsappNumber.trim().slice(0, 20);
+      const sanitizedDeliveryTime = deliveryTime?.trim().slice(0, 100) || null;
+
+      const orderInserts = cartItems.map((item) => {
+        const sanitizedNotes = item.notes?.trim().slice(0, 1000) || null;
+        const sanitizedCustomRequest = item.customRequest?.trim().slice(0, 2000) || null;
+        const itemTotal = item.unitPrice * item.quantity;
+        const itemDiscount = itemTotal * (selectedPlan?.discount || 0);
+        const itemFinal = itemTotal - itemDiscount;
+
+        return {
+          user_id: user.id,
+          package_name: item.package.name.slice(0, 255),
+          package_class: item.selectedClass?.name?.slice(0, 100) || null,
+          quantity: item.quantity,
+          notes: sanitizedNotes,
+          custom_request: sanitizedCustomRequest,
+          total_price: itemTotal,
+          final_price: itemFinal,
+          discount_amount: itemDiscount,
+          payment_method: paymentPlan,
+          payment_status: "pending",
+          installment_plan: paymentPlan !== "one-time" ? paymentPlan : null,
+          delivery_date: deliveryDate || null,
+          delivery_time: sanitizedDeliveryTime,
+          customer_name: sanitizedCustomerName,
+          customer_email: sanitizedEmail,
+          customer_whatsapp: sanitizedWhatsapp,
+          status: "pending_payment",
+        };
+      });
+
+      const { data: orders, error: orderError } = await supabase
+        .from("orders")
+        .insert(orderInserts)
+        .select("id, final_price");
+
+      if (orderError || !orders?.length) throw new Error(orderError?.message || "Failed to create order");
+
+      // Step 2: Use the primary (first) order for Paystack
+      const primaryOrder = orders[0];
+      const totalAmount = orders.reduce((sum, o) => sum + Number(o.final_price), 0);
+
+      // Step 3: Call edge function to initialize Paystack payment
+      const { data: paystackData, error: paystackError } = await supabase.functions.invoke("paystack", {
+        body: {
+          action: "initialize",
+          email: sanitizedEmail,
+          amount: totalAmount,
+          orderId: primaryOrder.id,
+          callback_url: `${window.location.origin}/orders`,
+          metadata: {
+            customer_name: sanitizedCustomerName,
+            items: cartItems.map(i => i.package.name).join(", "),
+          },
+        },
+      });
+
+      if (paystackError || !paystackData?.authorization_url) {
+        // If Paystack fails (e.g. key not configured), fall back to bank transfer flow
         toast({
-          title: "Payment Cancelled",
-          description: "You cancelled the payment process.",
+          title: "Card payment unavailable",
+          description: paystackData?.message || "Paystack is not configured. Your order has been saved as pending payment. Please upload a bank transfer proof.",
           variant: "default",
         });
-      },
-    });
+        clearCart();
+        navigate("/order-confirmation", {
+          state: { cartItems, totalPrice, paymentMethod: paymentPlan, discountAmount, deliveryDate, deliveryTime, finalPrice, customerInfo, hasCustomOrders: false },
+        });
+        return;
+      }
+
+      // Step 4: Clear cart and redirect to Paystack checkout
+      clearCart();
+      window.location.href = paystackData.authorization_url;
+    } catch (error: any) {
+      toast({
+        title: "Payment Error",
+        description: error.message || "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSubmit = async (paymentData?: any) => {

@@ -78,7 +78,6 @@ export function usePackages(categoryId?: string) {
 
         setPackages(packagesWithClasses);
       } else {
-        // No packages in DB - return empty
         setPackages([]);
       }
     } catch (err) {
@@ -120,7 +119,6 @@ export function useAdminPackages() {
       }
 
       if (dbPackages && dbPackages.length > 0) {
-        // Fetch classes for each package
         const packageIds = dbPackages.map(p => p.id);
         const { data: classesData } = await supabase
           .from("package_classes")
@@ -141,7 +139,6 @@ export function useAdminPackages() {
 
         setPackages(packagesWithClasses);
       } else {
-        // No packages in DB - admin should create them, don't show static data
         setPackages([]);
       }
     } catch (err) {
@@ -149,6 +146,32 @@ export function useAdminPackages() {
       console.error("Error fetching packages:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const logAuditAction = async (action: string, targetId: string, details: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("email, role")
+        .eq("id", user.id)
+        .single();
+
+      await supabase.from("audit_log").insert({
+        actor_id: user.id,
+        actor_email: profile?.email || user.email || "",
+        actor_role: profile?.role || "unknown",
+        action,
+        action_type: action,
+        target_type: "package",
+        target_id: targetId,
+        details,
+      });
+    } catch (err) {
+      console.error("Audit log error:", err);
     }
   };
 
@@ -170,7 +193,6 @@ export function useAdminPackages() {
 
     if (error) throw error;
 
-    // Add classes if provided
     if (pkg.classes && pkg.classes.length > 0 && data) {
       const classesToInsert = pkg.classes.map((c, index) => ({
         package_id: data.id,
@@ -183,6 +205,7 @@ export function useAdminPackages() {
       await supabase.from("package_classes").insert(classesToInsert);
     }
 
+    await logAuditAction("create_package", data?.id || "", `Created package: ${pkg.name}`);
     await fetchPackages();
     return data;
   };
@@ -205,15 +228,12 @@ export function useAdminPackages() {
 
     if (error) throw error;
 
-    // Update classes if provided
     if (updates.classes !== undefined) {
-      // First delete existing classes
       await supabase
         .from("package_classes")
         .delete()
         .eq("package_id", id);
 
-      // Then insert new classes
       if (updates.classes.length > 0) {
         const classesToInsert = updates.classes.map((c, index) => ({
           package_id: id,
@@ -227,33 +247,42 @@ export function useAdminPackages() {
       }
     }
 
+    await logAuditAction("edit_package", id, `Updated package: ${updates.name || id}`);
     await fetchPackages();
   };
 
   const deletePackage = async (id: string) => {
+    const pkg = packages.find(p => p.id === id);
     const { error } = await supabase
       .from("packages")
       .delete()
       .eq("id", id);
 
     if (error) throw error;
+    await logAuditAction("delete_package", id, `Deleted package: ${pkg?.name || id}`);
     await fetchPackages();
   };
 
   const toggleVisibility = async (id: string, isHidden: boolean) => {
+    const pkg = packages.find(p => p.id === id);
     const { error } = await supabase
       .from("packages")
       .update({ is_hidden: isHidden })
       .eq("id", id);
 
     if (error) throw error;
+    await logAuditAction(
+      isHidden ? "hide_package" : "show_package",
+      id,
+      `${isHidden ? "Hidden" : "Shown"} package: ${pkg?.name || id}`
+    );
     await fetchPackages();
   };
 
-  return { 
-    packages, 
-    loading, 
-    error, 
+  return {
+    packages,
+    loading,
+    error,
     refetch: fetchPackages,
     addPackage,
     updatePackage,

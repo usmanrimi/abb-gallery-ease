@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Truck, Search, RefreshCw, Phone, MapPin, Calendar, Loader2, Package } from "lucide-react";
+import { useAuditLog } from "@/hooks/useAuditLog";
 
 interface Delivery {
   id: string;
@@ -33,6 +34,7 @@ const statusOptions = [
 
 export default function AdminDeliveries() {
   const { toast } = useToast();
+  const { logAction } = useAuditLog();
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -98,6 +100,18 @@ export default function AdminDeliveries() {
         title: "Status updated",
         description: `Delivery marked as ${newStatus.replace("_", " ")}`,
       });
+
+      // Audit log
+      const delivery = deliveries.find(d => d.id === deliveryId);
+      await logAction(
+        `delivery_${newStatus}`,
+        {
+          actionType: `delivery_${newStatus}`,
+          targetType: "delivery",
+          targetId: deliveryId,
+          details: `Delivery ${delivery?.custom_order_id || orderId} → ${newStatus.replace(/_/g, " ")}`,
+        }
+      );
     } catch (error: any) {
       console.error("Error updating status:", error);
       toast({

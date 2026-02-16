@@ -14,6 +14,7 @@ import { formatPrice } from "@/data/categories";
 import { ShoppingCart, MessageSquare, Search, Calendar, RefreshCw, DollarSign, Image, Video, CheckCircle, XCircle } from "lucide-react";
 import { OrderChat } from "@/components/order/OrderChat";
 import { adminResponseSchema, customPriceSchema, validateInput } from "@/lib/validations";
+import { useAuditLog } from "@/hooks/useAuditLog";
 
 interface Order {
   id: string;
@@ -46,6 +47,7 @@ interface Order {
 
 export default function AdminOrders() {
   const { toast } = useToast();
+  const { logAction } = useAuditLog();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -83,7 +85,7 @@ export default function AdminOrders() {
 
   const handleRespond = async () => {
     if (!selectedOrder) return;
-    
+
     // Validate inputs before submission
     const responseValidation = validateInput(adminResponseSchema, response);
     if (responseValidation.success === false) {
@@ -136,8 +138,8 @@ export default function AdminOrders() {
       }
 
       // Truncate notification message for storage
-      const truncatedTitle = (sanitizedPrice !== null 
-        ? `Price Set: ${selectedOrder.package_name}` 
+      const truncatedTitle = (sanitizedPrice !== null
+        ? `Price Set: ${selectedOrder.package_name}`
         : `Order Update: ${selectedOrder.package_name}`
       ).slice(0, 255);
 
@@ -156,6 +158,19 @@ export default function AdminOrders() {
         title: "Response sent",
         description: "Customer has been notified",
       });
+
+      // Audit log
+      await logAction(
+        sanitizedPrice !== null ? "set_custom_price" : "respond_to_order",
+        {
+          actionType: sanitizedPrice !== null ? "set_custom_price" : "respond_to_order",
+          targetType: "order",
+          targetId: selectedOrder.id,
+          details: sanitizedPrice !== null
+            ? `Set price ₦${sanitizedPrice.toLocaleString()} for ${selectedOrder.package_name}`
+            : `Responded to ${selectedOrder.package_name} — status: ${newStatus || selectedOrder.status}`,
+        }
+      );
 
       setSelectedOrder(null);
       setResponse("");
@@ -178,9 +193,9 @@ export default function AdminOrders() {
       order.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.customer_email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.package_name.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     const matchesStatus = statusFilter === "all" || order.status === statusFilter;
-    
+
     return matchesSearch && matchesStatus;
   });
 
@@ -233,6 +248,17 @@ export default function AdminOrders() {
         title: approved ? "Payment verified" : "Payment rejected",
         description: approved ? "Order moved to processing" : "Customer has been notified",
       });
+
+      // Audit log
+      await logAction(
+        approved ? "verify_payment" : "reject_payment",
+        {
+          actionType: approved ? "verify_payment" : "reject_payment",
+          targetType: "order",
+          targetId: orderId,
+          details: `${approved ? "Verified" : "Rejected"} payment for ${order?.package_name || orderId}`,
+        }
+      );
 
       fetchOrders();
     } catch (error: any) {
@@ -377,7 +403,7 @@ export default function AdminOrders() {
                           <p className="text-sm">{order.custom_request}</p>
                         </div>
                       )}
-                      
+
                       {/* Payment Proof Section */}
                       {order.payment_proof_url && order.payment_status === "proof_uploaded" && (
                         <div className="p-3 mt-2 rounded-lg bg-amber-500/10 border border-amber-500/30">
@@ -426,7 +452,7 @@ export default function AdminOrders() {
                           )}
                         </div>
                       )}
-                      
+
                       <p className="text-xs text-muted-foreground flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
                         {new Date(order.created_at).toLocaleDateString("en-NG", {

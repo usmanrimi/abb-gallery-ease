@@ -40,6 +40,10 @@ import SuperAdminSettings from "./pages/superadmin/SuperAdminSettings";
 import SuperAdminCustomers from "./pages/superadmin/SuperAdminCustomers";
 import SuperAdminQA from "./pages/superadmin/SuperAdminQA";
 import SuperAdminAnalytics from "./pages/superadmin/SuperAdminAnalytics";
+import SuperAdminCategories from "./pages/superadmin/SuperAdminCategories";
+import SuperAdminPackages from "./pages/superadmin/SuperAdminPackages";
+import SuperAdminOrders from "./pages/superadmin/SuperAdminOrders";
+import SuperAdminDeliveries from "./pages/superadmin/SuperAdminDeliveries";
 
 const queryClient = new QueryClient();
 
@@ -176,6 +180,26 @@ const App = () => (
               <Route path="/super-admin/settings" element={
                 <ProtectedRoute allowedRole="super_admin">
                   <SuperAdminSettings />
+                </ProtectedRoute>
+              } />
+              <Route path="/super-admin/categories" element={
+                <ProtectedRoute allowedRole="super_admin">
+                  <SuperAdminCategories />
+                </ProtectedRoute>
+              } />
+              <Route path="/super-admin/packages" element={
+                <ProtectedRoute allowedRole="super_admin">
+                  <SuperAdminPackages />
+                </ProtectedRoute>
+              } />
+              <Route path="/super-admin/orders" element={
+                <ProtectedRoute allowedRole="super_admin">
+                  <SuperAdminOrders />
+                </ProtectedRoute>
+              } />
+              <Route path="/super-admin/deliveries" element={
+                <ProtectedRoute allowedRole="super_admin">
+                  <SuperAdminDeliveries />
                 </ProtectedRoute>
               } />
 

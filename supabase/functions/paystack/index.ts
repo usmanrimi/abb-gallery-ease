@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createHmac } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,7 +20,7 @@ serve(async (req) => {
 
     if (!PAYSTACK_SECRET_KEY) {
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: "Paystack not configured",
           message: "Please add PAYSTACK_SECRET_KEY to enable card payments. For now, use bank transfer option."
         }),
@@ -28,11 +29,96 @@ serve(async (req) => {
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Check if this is a webhook (no JSON body parsing needed for signature check)
+    const url = new URL(req.url);
+    const isWebhook = url.pathname.endsWith("/webhook") || url.searchParams.get("action") === "webhook";
+
+    if (isWebhook && req.method === "POST") {
+      // ---- WEBHOOK HANDLER ----
+      const body = await req.text();
+      const signature = req.headers.get("x-paystack-signature");
+
+      // Verify webhook signature
+      if (signature) {
+        const encoder = new TextEncoder();
+        const key = encoder.encode(PAYSTACK_SECRET_KEY);
+        const data = encoder.encode(body);
+        const hmac = createHmac("sha512", key);
+        hmac.update(data);
+        const expectedSignature = hmac.digest("hex");
+
+        if (signature !== expectedSignature) {
+          console.error("Invalid webhook signature");
+          return new Response("Invalid signature", { status: 401 });
+        }
+      }
+
+      const event = JSON.parse(body);
+
+      if (event.event === "charge.success") {
+        const txData = event.data;
+        const reference = txData.reference;
+        const orderId = txData.metadata?.order_id;
+
+        if (orderId) {
+          // Update order status
+          await supabase
+            .from("orders")
+            .update({
+              status: "paid",
+              payment_status: "paid",
+              payment_reference: reference,
+              payment_verified_at: new Date().toISOString(),
+            })
+            .eq("id", orderId);
+
+          // Get order details for notification
+          const { data: order } = await supabase
+            .from("orders")
+            .select("user_id, package_name")
+            .eq("id", orderId)
+            .single();
+
+          if (order) {
+            // Notify customer
+            await supabase.from("notifications").insert({
+              user_id: order.user_id,
+              order_id: orderId,
+              title: "Payment Successful ✓",
+              message: `Your payment for ${order.package_name} has been confirmed. Your order is now being processed.`,
+            });
+
+            // Notify admins (use profiles table, not user_roles)
+            const { data: admins } = await supabase
+              .from("profiles")
+              .select("id")
+              .in("role", ["admin_ops", "super_admin"]);
+
+            if (admins?.length) {
+              await supabase.from("notifications").insert(
+                admins.map((admin) => ({
+                  user_id: admin.id,
+                  order_id: orderId,
+                  title: "New Payment Received",
+                  message: `Payment received for ${order.package_name}. Order is ready for processing.`,
+                }))
+              );
+            }
+          }
+        }
+      }
+
+      return new Response(JSON.stringify({ received: true }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // ---- REGULAR API ACTIONS ----
     const { action, ...data } = await req.json();
 
     switch (action) {
       case "initialize": {
-        // Initialize a Paystack transaction
         const { email, amount, orderId, metadata } = data;
 
         const response = await fetch("https://api.paystack.co/transaction/initialize", {
@@ -45,7 +131,7 @@ serve(async (req) => {
             email,
             amount: Math.round(amount * 100), // Convert to kobo
             reference: `MAG-${orderId}-${Date.now()}`,
-            callback_url: `${req.headers.get("origin")}/orders`,
+            callback_url: data.callback_url || `${req.headers.get("origin")}/orders`,
             metadata: {
               order_id: orderId,
               ...metadata,
@@ -70,7 +156,6 @@ serve(async (req) => {
       }
 
       case "verify": {
-        // Verify a transaction
         const { reference } = data;
 
         const response = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
@@ -95,6 +180,7 @@ serve(async (req) => {
                 status: "paid",
                 payment_status: "paid",
                 payment_reference: reference,
+                payment_verified_at: new Date().toISOString(),
               })
               .eq("id", orderId);
 
@@ -106,7 +192,6 @@ serve(async (req) => {
               .single();
 
             if (order) {
-              // Notify customer
               await supabase.from("notifications").insert({
                 user_id: order.user_id,
                 order_id: orderId,
@@ -115,15 +200,15 @@ serve(async (req) => {
               });
 
               // Notify admins
-              const { data: adminRoles } = await supabase
-                .from("user_roles")
-                .select("user_id")
-                .eq("role", "admin");
+              const { data: admins } = await supabase
+                .from("profiles")
+                .select("id")
+                .in("role", ["admin_ops", "super_admin"]);
 
-              if (adminRoles?.length) {
+              if (admins?.length) {
                 await supabase.from("notifications").insert(
-                  adminRoles.map((admin) => ({
-                    user_id: admin.user_id,
+                  admins.map((admin) => ({
+                    user_id: admin.id,
                     order_id: orderId,
                     title: "New Payment Received",
                     message: `Payment received for ${order.package_name}. Order is ready for processing.`,
@@ -145,10 +230,8 @@ serve(async (req) => {
       }
 
       case "create_virtual_account": {
-        // Create a dedicated virtual account for the customer
-        const { customerId, email, firstName, lastName, phone, orderId } = data;
+        const { email, firstName, lastName, phone } = data;
 
-        // First, create or get customer
         const customerResponse = await fetch("https://api.paystack.co/customer", {
           method: "POST",
           headers: {
@@ -169,7 +252,6 @@ serve(async (req) => {
           throw new Error(customerResult.message || "Failed to create customer");
         }
 
-        // Create dedicated virtual account
         const dvaResponse = await fetch("https://api.paystack.co/dedicated_account", {
           method: "POST",
           headers: {
@@ -178,14 +260,13 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             customer: customerResult.data.customer_code,
-            preferred_bank: "wema-bank", // or "test-bank" for test mode
+            preferred_bank: "wema-bank",
           }),
         });
 
         const dvaResult = await dvaResponse.json();
 
         if (!dvaResult.status) {
-          // Virtual accounts might not be enabled, return bank transfer info instead
           return new Response(
             JSON.stringify({
               useFallback: true,
