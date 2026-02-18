@@ -10,8 +10,6 @@ import { useToast } from "@/hooks/use-toast";
 import { formatPrice } from "@/data/categories";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { PaymentInstructions } from "@/components/order/PaymentInstructions";
-import { PaymentProofUpload } from "@/components/order/PaymentProofUpload";
 
 interface Order {
   id: string;
@@ -130,54 +128,7 @@ export default function Orders() {
     }
   };
 
-  // Verify payment if returning from Paystack
-  useEffect(() => {
-    const verifyPayment = async () => {
-      const params = new URLSearchParams(window.location.search);
-      const reference = params.get("reference") || params.get("trxref");
 
-      if (reference && user) {
-        // Clear params to prevent re-verification on refresh
-        window.history.replaceState({}, "", window.location.pathname);
-
-        const toastId = toast({
-          title: "Verifying Payment",
-          description: "Please wait while we confirm your transaction...",
-        });
-
-        try {
-          const { data, error } = await supabase.functions.invoke("paystack", {
-            body: {
-              action: "verify",
-              reference,
-            },
-          });
-
-          if (error || !data || data.status !== "success") {
-            throw new Error(data?.message || "Payment verification failed");
-          }
-
-          toast({
-            title: "Payment Successful",
-            description: "Your order has been confirmed!",
-            variant: "default",
-          });
-
-          // Refresh orders to show updated status
-          fetchOrders();
-        } catch (error: any) {
-          console.error("Verification error:", error);
-          toast({
-            title: "Verification Failed",
-            description: "Could not verify payment. Please contact support if you were debited.",
-            variant: "destructive",
-          });
-        }
-      }
-    };
-
-    verifyPayment();
-  }, [user, toast]);
 
   const getDisplayPrice = (order: Order) => {
     return order.admin_set_price || order.final_price;
@@ -204,7 +155,7 @@ export default function Orders() {
           email: user.email,
           amount,
           orderId: order.id,
-          callback_url: `${window.location.origin}/orders`,
+          callback_url: `${window.location.origin}/order-confirmation`,
           metadata: {
             customer_name: user.user_metadata?.full_name || "",
             custom_order_id: order.custom_order_id || "",
@@ -216,7 +167,7 @@ export default function Orders() {
       if (error || !data?.authorization_url) {
         toast({
           title: "Card payment unavailable",
-          description: data?.message || "Please use bank transfer and upload proof instead.",
+          description: data?.message || "Please try again later.",
           variant: "default",
         });
         return;
@@ -393,13 +344,7 @@ export default function Orders() {
                                 <p className="font-semibold text-primary mt-2">{formatPrice(displayPrice)}</p>
                               </div>
 
-                              {/* Show payment instructions and upload for orders awaiting payment */}
-                              {showPaymentUpload && (
-                                <>
-                                  <PaymentInstructions amount={displayPrice} />
-                                  <PaymentProofUpload orderId={order.id} onUploadComplete={fetchOrders} />
-                                </>
-                              )}
+
 
                               {/* Waiting for admin price message */}
                               {order.status === "waiting_for_price" && (

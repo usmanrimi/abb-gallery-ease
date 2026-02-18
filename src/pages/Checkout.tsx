@@ -199,7 +199,7 @@ export default function Checkout() {
           email: sanitizedEmail,
           amount: totalAmount,
           orderId: primaryOrder.id,
-          callback_url: `${window.location.origin}/orders`,
+          callback_url: `${window.location.origin}/order-confirmation`,
           metadata: {
             customer_name: sanitizedCustomerName,
             custom_order_id: primaryOrder.custom_order_id,

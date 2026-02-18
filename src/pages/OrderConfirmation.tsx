@@ -1,11 +1,13 @@
-import { useLocation, Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useLocation, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatPrice } from "@/data/categories";
-import { CheckCircle2, Package, Clock, ArrowRight, AlertCircle } from "lucide-react";
+import { CheckCircle2, Package, Clock, ArrowRight, AlertCircle, Loader2, XCircle } from "lucide-react";
 import { CartItem } from "@/contexts/CartContext";
-import { PaymentInstructions } from "@/components/order/PaymentInstructions";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface OrderConfirmationData {
   cartItems?: CartItem[];
@@ -19,13 +21,151 @@ interface OrderConfirmationData {
 
 export default function OrderConfirmation() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { toast } = useToast();
   const orderData = location.state as OrderConfirmationData | null;
 
+  const [verifying, setVerifying] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState<"idle" | "success" | "error">("idle");
+  const [verifiedOrder, setVerifiedOrder] = useState<any>(null);
+
+  // Check for Paystack callback
+  const reference = searchParams.get("reference") || searchParams.get("trxref");
+
+  useEffect(() => {
+    if (reference) {
+      verifyPayment(reference);
+    }
+  }, [reference]);
+
+  const verifyPayment = async (ref: string) => {
+    setVerifying(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("paystack", {
+        body: {
+          action: "verify",
+          reference: ref,
+        },
+      });
+
+      if (error || !data || data.status !== "success") {
+        throw new Error(data?.message || "Payment verification failed");
+      }
+
+      setVerificationStatus("success");
+      setVerifiedOrder({
+        reference: ref,
+        amount: data.amount,
+      });
+
+      toast({
+        title: "Payment Successful",
+        description: "Your order has been confirmed!",
+        variant: "default",
+      });
+
+    } catch (error: any) {
+      console.error("Verification error:", error);
+      setVerificationStatus("error");
+      toast({
+        title: "Verification Failed",
+        description: "Could not verify payment. Please contact support if you were debited.",
+        variant: "destructive",
+      });
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  // 1. Loading State (Verifying)
+  if (verifying) {
+    return (
+      <Layout>
+        <div className="container py-32 text-center flex flex-col items-center">
+          <Loader2 className="h-16 w-16 animate-spin text-primary mb-6" />
+          <h1 className="text-2xl font-bold mb-2">Verifying Payment...</h1>
+          <p className="text-muted-foreground">Please wait while we confirm your transaction.</p>
+        </div>
+      </Layout>
+    );
+  }
+
+  // 2. Error State
+  if (verificationStatus === "error") {
+    return (
+      <Layout>
+        <div className="container py-32 text-center flex flex-col items-center">
+          <XCircle className="h-16 w-16 text-destructive mb-6" />
+          <h1 className="text-2xl font-bold mb-4">Payment Verification Failed</h1>
+          <p className="text-muted-foreground mb-8 max-w-md">
+            We couldn't verify your payment. If you have been debited, please contact support with your reference: <span className="font-mono font-bold">{reference}</span>
+          </p>
+          <div className="flex gap-4">
+            <Link to="/orders">
+              <Button variant="outline">View Orders</Button>
+            </Link>
+            <Button onClick={() => window.location.reload()}>Try Again</Button>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // 3. Success State (Verified Payment)
+  if (verificationStatus === "success") {
+    return (
+      <Layout>
+        <div className="container py-16 md:py-20 text-center animate-scale-in">
+          <div className="flex justify-center mb-6">
+            <div className="flex h-24 w-24 items-center justify-center rounded-full bg-success/10">
+              <CheckCircle2 className="h-12 w-12 text-success" />
+            </div>
+          </div>
+          <h1 className="text-3xl font-bold font-display md:text-4xl mb-4">
+            Payment Successful!
+          </h1>
+          <p className="text-lg text-muted-foreground mb-8">
+            Thank you for your order. We have received your payment.
+          </p>
+
+          <Card className="max-w-md mx-auto mb-8">
+            <CardContent className="p-6 space-y-4">
+              <div className="flex justify-between border-b pb-4">
+                <span className="text-muted-foreground">Payment Reference</span>
+                <span className="font-mono font-medium">{verifiedOrder?.reference}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Amount Paid</span>
+                <span className="font-bold text-primary text-lg">{formatPrice(verifiedOrder?.amount)}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link to="/orders">
+              <Button size="lg" className="w-full sm:w-auto">
+                Track Order
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </Link>
+            <Link to="/categories">
+              <Button variant="outline" size="lg" className="w-full sm:w-auto">
+                Continue Shopping
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // 4. Default State (Custom Order Submission / No Data)
   if (!orderData || !orderData.cartItems || orderData.cartItems.length === 0) {
     return (
       <Layout>
         <div className="container py-16 text-center">
-          <h1 className="text-2xl font-bold mb-4">No order found</h1>
+          <h1 className="text-2xl font-bold mb-4">No order details found</h1>
           <Link to="/categories">
             <Button>Browse Packages</Button>
           </Link>
@@ -39,26 +179,18 @@ export default function OrderConfirmation() {
     finalPrice = 0,
     deliveryDate,
     deliveryTime,
-    hasCustomOrders,
     orderIds,
   } = orderData;
 
-  // Display the branded order IDs if available
   const displayOrderId = orderIds?.length ? orderIds[0] : `ORD-${Date.now().toString(36).toUpperCase()}`;
 
-  // Separate custom and regular orders
+  // Filter for Custom Items (only remaining flow that lands here without payment)
   const customItems = cartItems.filter(
     item => item.selectedClass?.id === "custom" || !!item.customRequest
   );
-  const regularItems = cartItems.filter(
-    item => item.selectedClass?.id !== "custom" && !item.customRequest
-  );
 
-  // Calculate totals for regular items only
-  const regularItemsTotal = regularItems.reduce(
-    (sum, item) => sum + item.unitPrice * item.quantity,
-    0
-  );
+  // NOTE: Regular items should not theoretically land here anymore without payment, 
+  // but if they do (e.g. edge case), we just show them as "Order Received" without payment instructions.
 
   return (
     <Layout>
@@ -66,34 +198,25 @@ export default function OrderConfirmation() {
         <div className="max-w-2xl mx-auto animate-scale-in">
           <div className="text-center mb-8">
             <div className="flex justify-center mb-6">
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-success/10">
-                <CheckCircle2 className="h-10 w-10 text-success" />
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
+                <CheckCircle2 className="h-10 w-10 text-primary" />
               </div>
             </div>
 
             <h1 className="text-3xl font-bold font-display md:text-4xl mb-4">
-              Order Received!
+              Request Received
             </h1>
 
             <p className="text-lg text-muted-foreground mb-2">
-              Thank you for your order. Your order number is:
+              Your order number is:
             </p>
 
             <p className="text-2xl font-mono font-bold text-primary mb-6">
               {displayOrderId}
             </p>
-
-            {orderIds && orderIds.length > 1 && (
-              <div className="text-sm text-muted-foreground mb-4">
-                <p>All order IDs:</p>
-                {orderIds.map((id, i) => (
-                  <p key={i} className="font-mono font-semibold text-primary">{id}</p>
-                ))}
-              </div>
-            )}
           </div>
 
-          {/* Custom Orders - Pending Admin Response */}
+          {/* Custom Orders Message */}
           {customItems.length > 0 && (
             <Card className="mb-6 border-amber-500/50 bg-amber-500/5">
               <CardContent className="p-6">
@@ -108,130 +231,20 @@ export default function OrderConfirmation() {
                     </p>
                   </div>
                 </div>
-
-                <div className="space-y-3">
-                  {customItems.map((item) => (
-                    <div key={item.id} className="flex items-start gap-3 p-4 rounded-xl bg-background border">
-                      <Package className="h-5 w-5 text-amber-600 mt-0.5" />
-                      <div className="flex-1">
-                        <p className="font-medium">{item.package.name}</p>
-                        <p className="text-sm text-amber-600">Custom Request</p>
-                        {item.customRequest && (
-                          <p className="text-sm text-muted-foreground mt-1">
-                            "{item.customRequest}"
-                          </p>
-                        )}
-                        <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-sm font-medium text-amber-600">Pending</span>
-                      </div>
-                    </div>
+                <div className="space-y-2">
+                  {customItems.map((item, i) => (
+                    <p key={i} className="text-sm font-medium">• {item.package.name}</p>
                   ))}
                 </div>
-
-                <div className="mt-4 p-4 rounded-xl bg-amber-500/10 border border-dashed border-amber-500/30">
-                  <p className="text-sm text-center text-amber-700">
-                    You'll receive a notification once admin sets the price. Payment instructions will be shown then.
-                  </p>
-                </div>
               </CardContent>
             </Card>
           )}
 
-          {/* Regular Orders - Show Payment Instructions */}
-          {regularItems.length > 0 && (
-            <>
-              <div className="mb-6">
-                <PaymentInstructions amount={regularItemsTotal} />
-              </div>
-
-              <Card className="mb-8">
-                <CardContent className="p-6">
-                  <div className="flex items-start gap-4 mb-6">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                      <Clock className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-lg">Ready for Payment</h3>
-                      <p className="text-muted-foreground">
-                        Please transfer to the account above. We will confirm your payment and process your order within <strong>24-48 hours</strong>.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="border-t pt-6 space-y-4">
-                    <h4 className="font-semibold">Order Details</h4>
-
-                    {regularItems.map((item) => (
-                      <div key={item.id} className="flex items-start gap-3 p-4 rounded-xl bg-muted/50">
-                        <Package className="h-5 w-5 text-primary mt-0.5" />
-                        <div className="flex-1">
-                          <p className="font-medium">{item.package.name}</p>
-                          {item.selectedClass && (
-                            <p className="text-sm text-muted-foreground">{item.selectedClass.name} Class</p>
-                          )}
-                          <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
-                        </div>
-                        <p className="font-medium">{formatPrice(item.unitPrice * item.quantity)}</p>
-                      </div>
-                    ))}
-
-                    {(deliveryDate || deliveryTime) && (
-                      <div className="p-4 rounded-xl bg-muted/50">
-                        <p className="text-sm text-muted-foreground mb-1">Preferred Delivery</p>
-                        <p className="font-medium">
-                          {deliveryDate && new Date(deliveryDate).toLocaleDateString("en-NG", {
-                            weekday: "long",
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          })}
-                          {deliveryTime && ` • ${deliveryTime}`}
-                        </p>
-                      </div>
-                    )}
-
-                    <div className="flex justify-between items-center pt-4 border-t">
-                      <span className="font-semibold">Total Amount</span>
-                      <span className="text-2xl font-bold text-primary">{formatPrice(regularItemsTotal)}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </>
-          )}
-
-          {/* If only custom orders, show simplified card */}
-          {regularItems.length === 0 && customItems.length > 0 && (
-            <Card className="mb-8">
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <Clock className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg">What happens next?</h3>
-                    <p className="text-muted-foreground">
-                      Our team will review your custom request and send you the final price within <strong>24 hours</strong>.
-                      You'll receive payment instructions once the price is confirmed.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
             <Link to="/orders">
               <Button size="lg" className="w-full sm:w-auto">
-                Track Order
+                View My Orders
                 <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-            </Link>
-            <Link to="/categories">
-              <Button variant="outline" size="lg" className="w-full sm:w-auto">
-                Continue Shopping
               </Button>
             </Link>
           </div>
