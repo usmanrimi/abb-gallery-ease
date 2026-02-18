@@ -1,5 +1,5 @@
 import { AdminLayout } from "@/components/admin/AdminLayout";
-import { PaymentSettings } from "@/components/admin/PaymentSettings";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -27,7 +27,7 @@ export default function AdminSettings() {
           <p className="text-muted-foreground">Configure your store settings</p>
         </div>
 
-        <PaymentSettings />
+
 
         {/* Coming Soon Toggle Settings */}
         <Card>

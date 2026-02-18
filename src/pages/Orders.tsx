@@ -166,7 +166,7 @@ export default function Orders() {
 
       if (error || !data?.authorization_url) {
         toast({
-          title: "Card payment unavailable",
+          title: "Payment Error",
           description: data?.message || "Please try again later.",
           variant: "default",
         });

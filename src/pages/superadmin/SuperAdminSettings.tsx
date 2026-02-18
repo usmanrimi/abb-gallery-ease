@@ -1,5 +1,5 @@
 import { SuperAdminLayout } from "@/components/admin/SuperAdminLayout";
-import { PaymentSettings } from "@/components/admin/PaymentSettings";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -27,7 +27,7 @@ export default function SuperAdminSettings() {
           <p className="text-muted-foreground">Configure payment gateway and category visibility</p>
         </div>
 
-        <PaymentSettings />
+
 
         <Card>
           <CardHeader>
