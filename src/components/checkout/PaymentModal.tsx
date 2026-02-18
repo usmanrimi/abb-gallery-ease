@@ -123,40 +123,24 @@ export function PaymentModal({
       if (orderData) {
         // Initialize Paystack payment
         try {
-          const response = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/paystack`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          const { data: result, error: paystackError } = await supabase.functions.invoke("paystack", {
+            body: {
+              action: "initialize",
+              email: customerInfo.email.trim().toLowerCase(),
+              amount: totalAmount,
+              orderId: orderData.id,
+              callback_url: `${window.location.origin}/order-confirmation`,
+              metadata: {
+                customer_name: customerInfo.fullName,
+                package_name: packageData.name,
               },
-              body: JSON.stringify({
-                action: "initialize",
-                email: customerInfo.email.trim().toLowerCase(),
-                amount: totalAmount,
-                orderId: orderData.id,
-                callback_url: `${window.location.origin}/order-confirmation`,
-                metadata: {
-                  customer_name: customerInfo.fullName,
-                  package_name: packageData.name,
-                },
-              }),
-            }
-          );
+            },
+          });
 
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error("Paystack API Error:", response.status, errorText);
-            try {
-              const errorJson = JSON.parse(errorText);
-              throw new Error(errorJson.message || `Server error: ${response.status}`);
-            } catch (e) {
-              throw new Error(`Payment service failed (${response.status}): ${errorText.substring(0, 50)}...`);
-            }
+          if (paystackError || !result) {
+            console.error("Paystack API Error:", paystackError);
+            throw new Error(paystackError?.message || "Failed to contact payment server.");
           }
-
-          const result = await response.json();
 
           if (result.error) {
             toast.error(result.message || "Payment initialization failed.");
