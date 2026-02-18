@@ -143,6 +143,14 @@ export default function Checkout() {
 
     setIsSubmitting(true);
     try {
+      // Debug: Check environment variables
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseKey) {
+        throw new Error("Missing API Configuration. Please check Vercel Environment Variables (VITE_SUPABASE_URL) and (VITE_SUPABASE_ANON_KEY).");
+      }
+
       // Sanitize inputs
       const sanitizedCustomerName = customerInfo.fullName.trim().slice(0, 100);
       const sanitizedEmail = customerInfo.email.trim().toLowerCase().slice(0, 255);

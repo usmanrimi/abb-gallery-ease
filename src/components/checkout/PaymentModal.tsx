@@ -100,6 +100,11 @@ export function PaymentModal({
     setIsSubmitting(true);
 
     try {
+      // Debug: Check environment variables
+      if (!import.meta.env.VITE_SUPABASE_URL) {
+        throw new Error("Missing VITE_SUPABASE_URL. Please configure Vercel Environment Variables.");
+      }
+
       // Create order with pending_payment status (strictly Paystack)
       const { data: orderData, error } = await supabase.from("orders").insert({
         user_id: user.id,
