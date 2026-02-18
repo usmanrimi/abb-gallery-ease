@@ -120,6 +120,7 @@ serve(async (req) => {
     switch (action) {
       case "initialize": {
         const { email, amount, orderId, metadata } = data;
+        console.log(`Initializing payment for order ${orderId}, amount: ${amount}`);
 
         const response = await fetch("https://api.paystack.co/transaction/initialize", {
           method: "POST",
@@ -140,6 +141,7 @@ serve(async (req) => {
         });
 
         const result = await response.json();
+        console.log("Paystack initialize result:", result);
 
         if (!result.status) {
           throw new Error(result.message || "Failed to initialize payment");
@@ -157,6 +159,7 @@ serve(async (req) => {
 
       case "verify": {
         const { reference } = data;
+        console.log(`Verifying payment for reference: ${reference}`);
 
         const response = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
           headers: {
@@ -165,6 +168,7 @@ serve(async (req) => {
         });
 
         const result = await response.json();
+        console.log("Paystack verify result:", result);
 
         if (!result.status) {
           throw new Error(result.message || "Failed to verify payment");
@@ -173,8 +177,9 @@ serve(async (req) => {
         if (result.data.status === "success") {
           const orderId = result.data.metadata?.order_id;
           if (orderId) {
+            console.log(`Payment successful for order ${orderId}. Updating status...`);
             // Update order status
-            await supabase
+            const { error: updateError } = await supabase
               .from("orders")
               .update({
                 status: "paid",
@@ -183,6 +188,10 @@ serve(async (req) => {
                 payment_verified_at: new Date().toISOString(),
               })
               .eq("id", orderId);
+
+            if (updateError) {
+              console.error("Error updating order status:", updateError);
+            }
 
             // Get order details for notification
             const { data: order } = await supabase

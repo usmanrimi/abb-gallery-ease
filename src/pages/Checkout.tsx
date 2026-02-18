@@ -209,37 +209,28 @@ export default function Checkout() {
       });
 
       if (paystackError || !paystackData?.authorization_url) {
-        // If Paystack fails, fall back to bank transfer flow
-        toast({
-          title: "Card payment unavailable",
-          description: paystackData?.message || "Paystack is not configured. Your order has been saved — please upload a bank transfer proof.",
-          variant: "default",
-        });
-        clearCart();
-        navigate("/order-confirmation", {
-          state: {
-            cartItems,
-            totalAmount: totalPrice,
-            finalPrice: totalPrice,
-            deliveryDate,
-            deliveryTime,
-            customerInfo,
-            hasCustomOrders: false,
-            orderIds: orders.map(o => o.custom_order_id),
-          },
-        });
-        return;
+        console.error("Paystack initialization failed:", paystackError || paystackData);
+        throw new Error(paystackData?.message || "Failed to initialize payment. Please try again.");
       }
 
-      // Clear cart and redirect to Paystack checkout
-      clearCart();
+      // Redirect to Paystack
       window.location.href = paystackData.authorization_url;
+      // We do NOT clear cart here immediately if we want to preserve state on back button, 
+      // but usually standard to clear it if we hand off to payment provider. 
+      // User says: "Order should only be confirmed after successful Paystack verification."
+      // If we clear cart, and they come back without paying, the cart is empty.
+      // However, the order is created in DB. 
+      // Let's clear cart as we have created the Order in DB.
+      clearCart();
+
     } catch (error: any) {
+      console.error("Checkout error:", error);
       toast({
         title: "Payment Error",
         description: error.message || "Something went wrong. Please try again.",
         variant: "destructive",
       });
+      // Do NOT navigate to order-confirmation on error
     } finally {
       setIsSubmitting(false);
     }
