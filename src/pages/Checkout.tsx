@@ -210,27 +210,22 @@ export default function Checkout() {
 
       if (paystackError || !paystackData?.authorization_url) {
         console.error("Paystack initialization failed:", paystackError || paystackData);
-        throw new Error(paystackData?.message || "Failed to initialize payment. Please try again.");
+        // Extract more detailed error if available
+        const errorMessage = paystackData?.message || paystackError?.message || "Failed to initialize payment. Please try again.";
+        throw new Error(errorMessage);
       }
 
       // Redirect to Paystack
       window.location.href = paystackData.authorization_url;
-      // We do NOT clear cart here immediately if we want to preserve state on back button, 
-      // but usually standard to clear it if we hand off to payment provider. 
-      // User says: "Order should only be confirmed after successful Paystack verification."
-      // If we clear cart, and they come back without paying, the cart is empty.
-      // However, the order is created in DB. 
-      // Let's clear cart as we have created the Order in DB.
       clearCart();
 
     } catch (error: any) {
       console.error("Checkout error:", error);
       toast({
         title: "Payment Error",
-        description: error.message || "Something went wrong. Please try again.",
+        description: error.message || "Something went wrong. Please check your connection and try again.",
         variant: "destructive",
       });
-      // Do NOT navigate to order-confirmation on error
     } finally {
       setIsSubmitting(false);
     }

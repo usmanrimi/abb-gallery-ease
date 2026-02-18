@@ -145,18 +145,29 @@ export function PaymentModal({
             }
           );
 
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error("Paystack API Error:", response.status, errorText);
+            try {
+              const errorJson = JSON.parse(errorText);
+              throw new Error(errorJson.message || `Server error: ${response.status}`);
+            } catch (e) {
+              throw new Error(`Payment service failed (${response.status}): ${errorText.substring(0, 50)}...`);
+            }
+          }
+
           const result = await response.json();
 
           if (result.error) {
-            toast.error(result.message || "Payment initialization failed. Please try again.");
+            toast.error(result.message || "Payment initialization failed.");
           } else if (result.authorization_url) {
             // Redirect to Paystack
             window.location.href = result.authorization_url;
             return;
           }
-        } catch (paystackError) {
+        } catch (paystackError: any) {
           console.error("Paystack error:", paystackError);
-          toast.error("Payment service unavailable. Please try again later.");
+          toast.error(paystackError.message || "Payment service unavailable. Please check your connection.");
         }
       }
     } catch (error: any) {
