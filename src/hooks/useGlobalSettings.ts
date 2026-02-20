@@ -56,7 +56,7 @@ export function useGlobalSettings() {
 
             const { error } = await (supabase as any)
                 .from("global_settings")
-                .update({ ...updates, updated_at: new Promise(resolve => resolve(new Date().toISOString())), updated_by: user?.id })
+                .update({ ...updates, updated_at: new Date().toISOString(), updated_by: user?.id })
                 .eq("id", "current");
 
             if (error) throw error;
