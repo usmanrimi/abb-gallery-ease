@@ -297,214 +297,202 @@ export default function PackageDetail() {
               {pkg.description}
             </p>
 
-            {/* Starting price display if applicable */}
-            {pkg.starting_from && (
-              <div className="mb-6 inline-block bg-primary/5 border border-primary/20 px-4 py-2 rounded-xl">
-                <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Starting from</p>
-                <p className="text-3xl font-black text-primary">{formatPrice(pkg.starting_from)}</p>
-              </div>
-            )}
-
             <Card className="mb-6 border-border/50 shadow-sm overflow-hidden">
               <CardContent className="p-6 space-y-6">
                 {/* Class Selection */}
-                {pkg.classes && pkg.classes.length > 0 && (
-                  <div className="space-y-4">
-                    <Label className="text-lg font-black uppercase tracking-tighter">Choose a Pricing Tier</Label>
-                    <RadioGroup
-                      value={selectedClass}
-                      onValueChange={setSelectedClass}
-                      className="grid gap-3"
-                    >
-                      {pkg.classes.map((cls) => (
-                        <Label
-                          key={cls.id}
-                          htmlFor={cls.id}
-                          className={cn(
-                            "flex items-start gap-3 rounded-2xl border-2 p-5 cursor-pointer transition-all duration-200",
-                            selectedClass === cls.id
-                              ? "border-primary bg-primary/5 shadow-md shadow-primary/10"
-                              : "border-border/50 hover:border-primary/30 bg-muted/20"
-                          )}
-                        >
-                          <RadioGroupItem
-                            value={cls.id}
-                            id={cls.id}
-                            className="mt-1"
-                          />
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between flex-wrap gap-2">
-                              <span className="text-lg font-black tracking-tight">{cls.name}</span>
-                              <span className="text-xl font-black text-primary">
-                                {formatPrice(cls.price)}
-                              </span>
-                            </div>
-                            <p className="text-sm text-muted-foreground mt-1 font-medium italic">
-                              {cls.description}
-                            </p>
-                          </div>
-                        </Label>
-                      ))}
-
-                      {/* Custom Option */}
+                <div className="space-y-4">
+                  <Label className="text-lg font-black uppercase tracking-tighter">Choose Your Tier</Label>
+                  <RadioGroup
+                    value={selectedClass}
+                    onValueChange={setSelectedClass}
+                    className="grid gap-3"
+                  >
+                    {pkg.classes?.map((cls) => (
                       <Label
-                        htmlFor="custom"
+                        key={cls.id}
+                        htmlFor={cls.id}
                         className={cn(
                           "flex items-start gap-3 rounded-2xl border-2 p-5 cursor-pointer transition-all duration-200",
-                          selectedClass === "custom"
+                          selectedClass === cls.id
                             ? "border-primary bg-primary/5 shadow-md shadow-primary/10"
-                            : "border-border/50 hover:border-primary/30 border-dashed bg-muted/10"
+                            : "border-border/50 hover:border-primary/30 bg-muted/20"
                         )}
                       >
                         <RadioGroupItem
-                          value="custom"
-                          id="custom"
+                          value={cls.id}
+                          id={cls.id}
                           className="mt-1"
                         />
                         <div className="flex-1">
                           <div className="flex items-center justify-between flex-wrap gap-2">
-                            <span className="text-lg font-black tracking-tight">Custom Order</span>
-                            <span className="text-sm font-bold text-muted-foreground uppercase tracking-tighter">
-                              Quotation
+                            <span className="text-lg font-black tracking-tight">{cls.name}</span>
+                            <span className="text-xl font-black text-primary">
+                              {formatPrice(cls.price)}
                             </span>
                           </div>
                           <p className="text-sm text-muted-foreground mt-1 font-medium italic">
-                            Describe your specific needs and we'll provide a tailor-made quotation.
+                            {cls.description}
                           </p>
                         </div>
                       </Label>
-                    </RadioGroup>
+                    ))}
 
-                    {/* Custom Request Text Area */}
-                    {isCustomSelected && (
-                      <div className="space-y-3 pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                        <Label htmlFor="customRequest" className="text-sm font-bold text-primary uppercase tracking-widest">
-                          Describe your requirements
-                        </Label>
-                        <Textarea
-                          id="customRequest"
-                          placeholder="Please list your preferred items, budget, and any special requests..."
-                          value={customRequest}
-                          onChange={(e) => setCustomRequest(e.target.value)}
-                          rows={4}
-                          className="border-primary/20 focus-visible:ring-primary shadow-sm"
-                          required
-                        />
-                        <p className="text-xs text-muted-foreground font-medium">
-                          Our team will review your request and contact you with a final price.
+                    {/* Custom Option */}
+                    <Label
+                      htmlFor="custom"
+                      className={cn(
+                        "flex items-start gap-3 rounded-2xl border-2 p-5 cursor-pointer transition-all duration-200",
+                        selectedClass === "custom"
+                          ? "border-primary bg-primary/5 shadow-md shadow-primary/10"
+                          : "border-border/50 hover:border-primary/30 border-dashed bg-muted/10"
+                      )}
+                    >
+                      <RadioGroupItem
+                        value="custom"
+                        id="custom"
+                        className="mt-1"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <span className="text-lg font-black tracking-tight">CUSTOM ORDER</span>
+                          <span className="text-sm font-bold text-muted-foreground uppercase tracking-tighter">
+                            Quotation Required
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1 font-medium italic">
+                          Describe exactly what you need and we will calculate a tailor-made price for you.
                         </p>
                       </div>
-                    )}
-                  </div>
-                )}
+                    </Label>
+                  </RadioGroup>
 
-                {/* Fixed Price Display if no classes */}
-                {(!pkg.classes || pkg.classes.length === 0) && pkg.price_standard && (
-                  <div className="text-center p-6 rounded-2xl bg-primary/5 border-2 border-primary/20">
-                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Standard Price</p>
-                    <p className="text-4xl font-black text-primary">{formatPrice(pkg.price_standard)}</p>
-                  </div>
-                )}
-
-                {/* Quantity */}
-                <div className="space-y-4 pt-2">
-                  <Label className="text-lg font-black uppercase tracking-tighter">Set Quantity</Label>
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-1 rounded-xl border-2 border-border/50 p-1 bg-background">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-10 w-10 rounded-lg hover:bg-muted"
-                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                        disabled={quantity <= 1}
-                      >
-                        <Minus className="h-4 w-4" />
-                      </Button>
-                      <span className="w-12 text-center text-lg font-black">{quantity}</span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-10 w-10 rounded-lg hover:bg-muted"
-                        onClick={() => setQuantity(quantity + 1)}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
+                  {/* Custom Request Text Area */}
+                  {isCustomSelected && (
+                    <div className="space-y-3 pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <Label htmlFor="customRequest" className="text-sm font-bold text-primary uppercase tracking-widest">
+                        Describe your requirements
+                      </Label>
+                      <Textarea
+                        id="customRequest"
+                        placeholder="Please list the items, preferences, and any specific details you want in your custom package..."
+                        value={customRequest}
+                        onChange={(e) => setCustomRequest(e.target.value)}
+                        rows={4}
+                        className="border-primary/20 focus-visible:ring-primary shadow-sm"
+                        required
+                      />
                     </div>
-                  </div>
+                  )}
                 </div>
 
-                {/* Notes */}
-                <div className="space-y-4 pt-2">
-                  <Label htmlFor="notes" className="text-lg font-black uppercase tracking-tighter">
-                    Special Instructions
-                  </Label>
-                  <Textarea
-                    id="notes"
-                    placeholder="E.g. Gift wrapping, specific delivery timing, or preferences..."
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    rows={3}
-                    className="border-border/50 focus-visible:ring-primary"
-                  />
+                {/* Quantity and Total Display - Only for standard tiers */}
+                {!isCustomSelected && (
+                  <div className="space-y-6 pt-2 border-t border-border/50">
+                    <div className="flex items-center justify-between flex-wrap gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-bold uppercase tracking-tighter">Quantity</Label>
+                        <div className="flex items-center gap-1 rounded-xl border-2 border-border/50 p-1 bg-background">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-10 w-10 rounded-lg hover:bg-muted"
+                            onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                            disabled={quantity <= 1}
+                          >
+                            <Minus className="h-4 w-4" />
+                          </Button>
+                          <span className="w-12 text-center text-lg font-black">{quantity}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-10 w-10 rounded-lg hover:bg-muted"
+                            onClick={() => setQuantity(quantity + 1)}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Total Amount</p>
+                        <p className="text-3xl font-black text-primary">{formatPrice(unitPrice * quantity)}</p>
+                      </div>
+                    </div>
+
+                    {/* Notes for orders */}
+                    <div className="space-y-2">
+                      <Label htmlFor="notes" className="text-sm font-bold uppercase tracking-tighter">
+                        Additional Instructions (Optional)
+                      </Label>
+                      <Textarea
+                        id="notes"
+                        placeholder="Any special notes or delivery preferences?"
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        rows={2}
+                        className="border-border/50 focus-visible:ring-primary"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="pt-4 flex flex-col gap-3">
+                  {isCustomSelected ? (
+                    <Button
+                      size="xl"
+                      className="w-full h-14 text-lg font-black uppercase tracking-tight shadow-lg shadow-primary/20"
+                      onClick={handleCalculateCost}
+                      disabled={!customRequest.trim() || isSubmittingCustom}
+                    >
+                      {isSubmittingCustom ? (
+                        <>
+                          <Loader2 className="h-6 w-6 mr-3 animate-spin" />
+                          Submitting Request...
+                        </>
+                      ) : (
+                        <>
+                          <Calculator className="h-6 w-6 mr-3" />
+                          Calculate My Cost
+                        </>
+                      )}
+                    </Button>
+                  ) : (
+                    <Button
+                      size="xl"
+                      className="w-full h-14 text-lg font-black uppercase tracking-tight shadow-lg shadow-primary/20"
+                      onClick={handleCheckout}
+                    >
+                      <CreditCard className="h-6 w-6 mr-3" />
+                      Proceed to Checkout / Pay Now
+                    </Button>
+                  )}
+
+                  {!isCustomSelected && (
+                    <Button
+                      variant="ghost"
+                      className="w-full text-muted-foreground hover:text-primary font-bold uppercase tracking-tighter"
+                      onClick={handleAddToCart}
+                    >
+                      <ShoppingCart className="h-4 w-4 mr-2" />
+                      Add to Cart
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Actions */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 p-6 rounded-2xl bg-muted/30 border border-border/50">
-              {isCustomSelected ? (
-                <Button
-                  size="xl"
-                  className="w-full sm:w-auto h-14 px-10 text-lg font-black uppercase tracking-tight shadow-lg shadow-primary/20"
-                  onClick={handleCalculateCost}
-                  disabled={!customRequest.trim() || isSubmittingCustom}
-                >
-                  {isSubmittingCustom ? (
-                    <>
-                      <Loader2 className="h-6 w-6 mr-3 animate-spin" />
-                      Submitting Request...
-                    </>
-                  ) : (
-                    <>
-                      <Calculator className="h-6 w-6 mr-3" />
-                      Get My Quotation
-                    </>
-                  )}
-                </Button>
-              ) : (
-                <>
-                  <Button
-                    variant="outline"
-                    size="xl"
-                    className="w-full sm:w-auto h-14 px-8 text-lg font-black uppercase tracking-tight border-2 border-primary/20 hover:bg-primary/5"
-                    onClick={handleAddToCart}
-                  >
-                    <ShoppingCart className="h-6 w-6 mr-3" />
-                    Add to Cart
-                  </Button>
-                  <Button
-                    size="xl"
-                    className="w-full sm:w-auto h-14 px-10 text-lg font-black uppercase tracking-tight shadow-lg shadow-primary/20"
-                    onClick={handleCheckout}
-                  >
-                    <CreditCard className="h-6 w-6 mr-3" />
-                    Checkout - {formatPrice(unitPrice * quantity)}
-                  </Button>
-                </>
-              )}
-            </div>
-
             {/* Features */}
-            <div className="mt-8 grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               {[
-                "100% Quality Guaranteed",
-                "Secure Payment with Paystack",
-                "Same Day Delivery Available",
-                "Pristine Packaging Included",
+                "Premium Quality Guarantee",
+                "Secure Online Payment",
+                "Fast Delivery Tracking",
+                "Professional Packaging",
               ].map((feature) => (
-                <div key={feature} className="flex items-center gap-3 text-sm font-bold text-muted-foreground/80">
-                  <div className="h-6 w-6 rounded-full bg-emerald-100 flex items-center justify-center">
-                    <Check className="h-4 w-4 text-emerald-600" />
+                <div key={feature} className="flex items-center gap-3 text-xs font-bold text-muted-foreground/60">
+                  <div className="h-5 w-5 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <Check className="h-3 w-3 text-emerald-600" />
                   </div>
                   {feature}
                 </div>

@@ -98,41 +98,22 @@ export default function CategoryDetail() {
                     ) : (
                       <PackageIcon className="h-16 w-16 text-primary/30" />
                     )}
-                    <div className="absolute top-3 right-3 flex flex-col gap-1">
-                      {pkg.price_vip && (
-                        <span className="inline-flex items-center rounded-full bg-primary/10 backdrop-blur-sm text-primary px-2 py-0.5 text-[10px] font-bold uppercase border border-primary/20 shadow-sm">
-                          VIP Available
-                        </span>
-                      )}
-                    </div>
                   </div>
-                  <CardContent className="p-5">
+                  <CardContent className="p-5 flex flex-col h-full">
                     <h3 className="font-display font-semibold text-lg mb-2">{pkg.name}</h3>
-                    <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                    <p className="text-sm text-muted-foreground mb-4 line-clamp-2 flex-grow">
                       {pkg.description}
                     </p>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        {pkg.starting_from ? (
-                          <div className="flex flex-col">
-                            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Starts from</span>
-                            <span className="text-lg font-black text-primary">
-                              {formatPrice(pkg.starting_from)}
-                            </span>
-                          </div>
-                        ) : pkg.price_standard ? (
-                          <div className="flex flex-col">
-                            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Standard</span>
-                            <span className="text-lg font-black text-primary">
-                              {formatPrice(pkg.price_standard)}
-                            </span>
-                          </div>
-                        ) : null}
+                    <div className="pt-4 border-t border-border/50 flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Starting From</span>
+                        <span className="text-xl font-black text-primary">
+                          {formatPrice(pkg.starting_from || pkg.price_standard || 0)}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-1 text-primary text-sm font-bold uppercase tracking-tighter">
-                        View
-                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                      </div>
+                      <Button size="sm" className="font-bold uppercase tracking-tighter h-9 px-4">
+                        View Package
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
