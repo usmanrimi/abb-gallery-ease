@@ -221,24 +221,25 @@ export default function AdminPackages() {
                 <DialogTitle>{editingPackage ? "Edit Package" : "Add New Package"}</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid gap-6 py-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Package Name</Label>
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Package Name</Label>
                       <Input
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         placeholder="e.g. Alhaji Babba Package"
+                        className="h-9"
                         required
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label>Category</Label>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Category</Label>
                       <Select
                         value={formData.category_id}
                         onValueChange={(value) => setFormData({ ...formData, category_id: value })}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="h-9">
                           <SelectValue placeholder="Select Category" />
                         </SelectTrigger>
                         <SelectContent>
@@ -252,67 +253,77 @@ export default function AdminPackages() {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Description</Label>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Description</Label>
                     <Textarea
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       placeholder="Enter package details..."
-                      rows={3}
+                      rows={2}
+                      className="resize-none"
                     />
                   </div>
 
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-3 md:grid-cols-2">
                     <ImageUpload
-                      label="Cover Image (Thumbnail)"
+                      label="Cover Image"
                       defaultValue={formData.image_cover_url}
                       onUpload={(url) => setFormData({ ...formData, image_cover_url: url })}
                       bucket="package-images"
                     />
                     <ImageUpload
-                      label="Detail Image (Expanded View)"
+                      label="Detail Image"
                       defaultValue={formData.image_detail_url}
                       onUpload={(url) => setFormData({ ...formData, image_detail_url: url })}
                       bucket="package-images"
                     />
                   </div>
 
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    <div className="space-y-2">
-                      <Label>VIP Price</Label>
-                      <Input
-                        type="number"
-                        value={formData.price_vip}
-                        onChange={(e) => setFormData({ ...formData, price_vip: e.target.value })}
-                        placeholder="0"
-                      />
+                  <div className="pt-2 border-t border-border/50">
+                    <h3 className="text-sm font-black uppercase tracking-tighter mb-4 text-primary">Class Section</h3>
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-bold uppercase tracking-wider">VIP Price</Label>
+                        <Input
+                          type="number"
+                          value={formData.price_vip}
+                          onChange={(e) => setFormData({ ...formData, price_vip: e.target.value })}
+                          placeholder="0"
+                          className="h-9 font-bold"
+                        />
+                      </div>
+                      <div className="space-y-1.5 border-x border-border/30 px-4">
+                        <Label className="text-xs font-bold uppercase tracking-wider text-primary">Special Price</Label>
+                        <Input
+                          type="number"
+                          value={formData.price_special}
+                          onChange={(e) => setFormData({ ...formData, price_special: e.target.value })}
+                          placeholder="0"
+                          className="h-9 font-bold border-primary/20"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-bold uppercase tracking-wider">Standard Price</Label>
+                        <Input
+                          type="number"
+                          value={formData.price_standard}
+                          onChange={(e) => setFormData({ ...formData, price_standard: e.target.value })}
+                          placeholder="0"
+                          className="h-9 font-bold"
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Special Price</Label>
-                      <Input
-                        type="number"
-                        value={formData.price_special}
-                        onChange={(e) => setFormData({ ...formData, price_special: e.target.value })}
-                        placeholder="0"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Standard Price</Label>
-                      <Input
-                        type="number"
-                        value={formData.price_standard}
-                        onChange={(e) => setFormData({ ...formData, price_standard: e.target.value })}
-                        placeholder="0"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Starting Price (Manual Override)</Label>
-                      <Input
-                        type="number"
-                        value={formData.starting_from}
-                        onChange={(e) => setFormData({ ...formData, starting_from: e.target.value })}
-                        placeholder="0"
-                      />
+                    <div className="mt-4 pt-3 border-t border-dashed border-border/50">
+                      <div className="space-y-1.5 max-w-[200px]">
+                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Manual Start Price</Label>
+                        <Input
+                          type="number"
+                          value={formData.starting_from}
+                          onChange={(e) => setFormData({ ...formData, starting_from: e.target.value })}
+                          placeholder="0"
+                          className="h-8 text-xs italic"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
