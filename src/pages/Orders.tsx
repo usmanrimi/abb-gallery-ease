@@ -41,12 +41,6 @@ const statusConfig: Record<string, { label: string; icon: any; variant: "default
     variant: "outline",
     description: "Admin is reviewing your custom request",
   },
-  price_sent: {
-    label: "Price Sent",
-    icon: CreditCard,
-    variant: "secondary",
-    description: "Review the price and make payment",
-  },
   paid: {
     label: "Paid",
     icon: CheckCircle2,
@@ -65,12 +59,6 @@ const statusConfig: Record<string, { label: string; icon: any; variant: "default
     variant: "default",
     description: "Your order is ready for dispatch",
   },
-  out_for_delivery: {
-    label: "Out for Delivery",
-    icon: Truck,
-    variant: "default",
-    description: "Your order is on its way!",
-  },
   delivered: {
     label: "Delivered",
     icon: CheckCircle2,
@@ -82,18 +70,6 @@ const statusConfig: Record<string, { label: string; icon: any; variant: "default
     icon: Clock,
     variant: "destructive",
     description: "Order was cancelled",
-  },
-  pending: {
-    label: "Pending",
-    icon: Clock,
-    variant: "outline",
-    description: "Awaiting processing",
-  },
-  confirmed: {
-    label: "Confirmed",
-    icon: CheckCircle2,
-    variant: "default",
-    description: "Payment confirmed",
   },
 };
 
@@ -138,9 +114,8 @@ export default function Orders() {
     return (
       order.admin_set_price &&
       order.admin_set_price > 0 &&
-      (order.status === "price_sent" || order.status === "pending_payment" || order.status === "waiting_for_price") &&
-      order.payment_status !== "paid" &&
-      order.payment_status !== "proof_uploaded"
+      (order.status === "pending_payment" || order.status === "waiting_for_price") &&
+      order.payment_status !== "paid"
     );
   };
 
@@ -238,9 +213,6 @@ export default function Orders() {
               const status = statusConfig[order.status as keyof typeof statusConfig] || statusConfig.pending;
               const StatusIcon = status.icon;
               const displayPrice = getDisplayPrice(order);
-              const showPaymentUpload =
-                (order.status === "pending_payment" || order.status === "processing" || order.status === "price_sent") &&
-                !order.payment_proof_url;
 
               return (
                 <Card
@@ -260,12 +232,6 @@ export default function Orders() {
                             <StatusIcon className="h-3 w-3 mr-1" />
                             {status.label}
                           </Badge>
-                          {order.payment_status === "proof_uploaded" && (
-                            <Badge variant="outline" className="text-xs">
-                              <Upload className="h-3 w-3 mr-1" />
-                              Proof Sent
-                            </Badge>
-                          )}
                         </div>
                         <h3 className="font-semibold text-lg">{order.package_name}</h3>
                         <p className="text-sm text-muted-foreground">
@@ -354,15 +320,6 @@ export default function Orders() {
                                   </p>
                                 </div>
                               )}
-
-                              {/* Proof uploaded message */}
-                              {order.payment_status === "proof_uploaded" && (
-                                <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                                  <p className="text-sm text-blue-700 text-center">
-                                    Payment proof uploaded. Admin will verify and confirm shortly.
-                                  </p>
-                                </div>
-                              )}
                             </div>
                           </DialogContent>
                         </Dialog>
@@ -378,7 +335,7 @@ export default function Orders() {
                           { key: "ready_for_delivery", label: "Ready", icon: Truck },
                           { key: "delivered", label: "Delivered", icon: CheckCircle2 },
                         ];
-                        const statusOrder = ["pending", "pending_payment", "waiting_for_price", "price_sent", "paid", "processing", "ready_for_delivery", "out_for_delivery", "delivered"];
+                        const statusOrder = ["pending", "pending_payment", "waiting_for_price", "paid", "processing", "ready_for_delivery", "delivered"];
                         const currentIdx = statusOrder.indexOf(order.status);
                         return (
                           <div className="flex items-center gap-1">

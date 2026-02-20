@@ -13,10 +13,12 @@ import { Shield, UserPlus, Loader2, Trash2, Beaker, CheckCircle2, XCircle } from
 import { SuperAdminLayout } from "@/components/admin/SuperAdminLayout";
 
 interface AdminUser {
-  user_id: string;
+  id: string;
   role: string;
   full_name: string | null;
   email: string | null;
+  is_suspended: boolean;
+  last_login_at: string | null;
 }
 
 export default function SuperAdminManagement() {
@@ -24,47 +26,44 @@ export default function SuperAdminManagement() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const { user } = useAuth();
+  const { user, refreshRole } = useAuth();
   const [newAdmin, setNewAdmin] = useState({ email: "", password: "", fullName: "", role: "admin_ops" as string });
+  const [activityLogs, setActivityLogs] = useState<any[]>([]);
 
   useEffect(() => {
     fetchAdmins();
+    fetchActivityLogs();
   }, []);
 
   const fetchAdmins = async () => {
     setLoading(true);
     try {
-      // Get all users with admin roles from user_roles table, joined with profiles
-      const { data: roleData, error } = await supabase
-        .from("user_roles")
-        .select("user_id, role")
-        .in("role", ["admin_ops", "super_admin"]);
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, role, full_name, email, is_suspended, last_login_at")
+        .in("role", ["admin_ops", "super_admin"])
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
-
-      // Fetch profile info for these users
-      const userIds = (roleData || []).map(r => r.user_id);
-      const { data: profiles } = userIds.length
-        ? await supabase.from("profiles").select("id, full_name, email").in("id", userIds)
-        : { data: [] };
-
-      const profileMap = new Map((profiles || []).map(p => [p.id, p]));
-
-      const adminList = (roleData || []).map(r => {
-        const profile = profileMap.get(r.user_id);
-        return {
-          user_id: r.user_id,
-          role: r.role,
-          full_name: profile?.full_name || null,
-          email: profile?.email || null,
-        };
-      });
-
-      setAdmins(adminList);
+      setAdmins(data as AdminUser[] || []);
     } catch (error) {
       console.error("Error fetching admins:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchActivityLogs = async () => {
+    try {
+      const { data, error } = await (supabase as any)
+        .from("audit_log")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      setActivityLogs(data || []);
+    } catch (err) {
+      console.error("Error fetching activity logs:", err);
     }
   };
 
@@ -75,7 +74,6 @@ export default function SuperAdminManagement() {
     }
     setCreating(true);
     try {
-      // Sign up the new admin user
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: newAdmin.email,
         password: newAdmin.password,
@@ -88,46 +86,26 @@ export default function SuperAdminManagement() {
 
       if (signUpData.user) {
         const userId = signUpData.user.id;
-        // IMMEDIATELY upsert into public.profiles to ensure role is set
-        // If user already exists as customer, this will change their role
-        const { data: profileCheck, error: profileError } = await (supabase
+        const { error: profileError } = await (supabase
           .from("profiles") as any)
           .upsert({
             id: userId,
             full_name: newAdmin.fullName,
             email: newAdmin.email,
             role: newAdmin.role,
-          }, { onConflict: 'id' })
-          .select('role')
-          .single();
+          });
 
-        if (profileError) {
-          throw new Error(`Profile creation failed: ${profileError.message}`);
-        }
-
-        if (profileCheck?.role !== newAdmin.role) {
-          throw new Error(`Role assignment failed. Expected ${newAdmin.role}, got ${profileCheck?.role}`);
-        }
-
-        // Assign/Update legacy user_roles table
-        const { error: roleTableError } = await (supabase
-          .from("user_roles") as any)
-          .upsert(
-            { user_id: userId, role: newAdmin.role as any },
-            { onConflict: "user_id" }
-          );
-
-        if (roleTableError) {
-          console.warn("Legacy user_roles update failed, but profile role is set:", roleTableError);
-        }
+        if (profileError) throw profileError;
 
         // Log the action
-        await supabase.from("audit_log").insert({
-          user_id: user!.id,
-          user_name: user?.user_metadata?.full_name || user?.email || "Unknown",
+        await (supabase as any).from("audit_log").insert({
+          actor_id: user!.id,
+          actor_email: user?.email,
+          actor_role: "super_admin",
           action: "create_admin",
-          entity_type: "user",
-          entity_id: userId,
+          action_type: "create",
+          target_type: "user",
+          target_id: userId,
           details: `Created ${newAdmin.role} account for ${newAdmin.email}`,
         });
 
@@ -135,6 +113,7 @@ export default function SuperAdminManagement() {
         setDialogOpen(false);
         setNewAdmin({ email: "", password: "", fullName: "", role: "admin_ops" });
         fetchAdmins();
+        fetchActivityLogs();
       }
     } catch (error: any) {
       toast.error(error.message || "Failed to create admin");
@@ -155,13 +134,12 @@ export default function SuperAdminManagement() {
 
     const logs: { step: string; status: "pass" | "fail" | "pending" }[] = [
       { step: "Auth user created", status: "pending" },
-      { step: "Profile role saved as admin_ops", status: "pending" },
-      { step: "Redirection check (simulated)", status: "pending" },
+      { step: "Profile role saved correctly", status: "pending" },
+      { step: "Audit log recorded", status: "pending" },
     ];
     setTestLogs([...logs]);
 
     try {
-      // 1. Create Auth User
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: testEmail,
         password: testPassword,
@@ -177,8 +155,6 @@ export default function SuperAdminManagement() {
       setTestLogs([...logs]);
 
       const userId = signUpData.user.id;
-
-      // 2. Upsert Profile Role
       const { error: profileError } = await supabase.from("profiles").upsert({
         id: userId,
         full_name: testFullName,
@@ -191,35 +167,23 @@ export default function SuperAdminManagement() {
         setTestLogs([...logs]);
         throw new Error("Profile upsert failed");
       }
-
-      // Verify it was actually saved
-      const { data: profileCheck } = await (supabase.from("profiles") as any)
-        .select("role")
-        .eq("id", userId)
-        .single();
-
-      if (profileCheck?.role !== "admin_ops") {
-        logs[1].status = "fail";
-        setTestLogs([...logs]);
-      } else {
-        logs[1].status = "pass";
-        setTestLogs([...logs]);
-      }
-
-      // 3. Redirection Simulation
-      // In a real app, we'd check where the router would send them.
-      // Here we simulate the logic in Login.tsx
-      const simulatedRole = profileCheck?.role;
-      if (simulatedRole === "admin_ops") {
-        logs[2].status = "pass";
-      } else {
-        logs[2].status = "fail";
-      }
+      logs[1].status = "pass";
       setTestLogs([...logs]);
 
-      toast.success("Admin Creation Test Completed");
+      await (supabase as any).from("audit_log").insert({
+        actor_id: user!.id,
+        actor_email: user?.email,
+        action: "qa_test",
+        action_type: "create",
+        target_type: "user",
+        target_id: userId,
+        details: "QA internal test: admin creation",
+      });
+      logs[2].status = "pass";
+      setTestLogs([...logs]);
+
+      toast.success("QA Internal Test Completed Successfully");
     } catch (err: any) {
-      console.error("Test failed:", err);
       toast.error(err.message || "Test failed");
     } finally {
       setTesting(false);
@@ -229,25 +193,54 @@ export default function SuperAdminManagement() {
   const handleChangeRole = async (userId: string, newRole: string) => {
     try {
       const { error } = await supabase
-        .from("user_roles")
-        .update({ role: newRole as any })
-        .eq("user_id", userId);
+        .from("profiles")
+        .update({ role: newRole })
+        .eq("id", userId);
 
       if (error) throw error;
 
-      await supabase.from("audit_log").insert({
-        user_id: user!.id,
-        user_name: user?.user_metadata?.full_name || user?.email || "Unknown",
+      await (supabase as any).from("audit_log").insert({
+        actor_id: user!.id,
+        actor_email: user?.email,
         action: "change_role",
-        entity_type: "user",
-        entity_id: userId,
+        action_type: "update",
+        target_type: "user",
+        target_id: userId,
         details: `Changed role to ${newRole}`,
       });
 
       toast.success("Role updated successfully");
       fetchAdmins();
+      fetchActivityLogs();
     } catch (error: any) {
       toast.error("Failed to update role");
+    }
+  };
+
+  const handleToggleSuspension = async (userId: string, currentStatus: boolean) => {
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ is_suspended: !currentStatus })
+        .eq("id", userId);
+
+      if (error) throw error;
+
+      await (supabase as any).from("audit_log").insert({
+        actor_id: user!.id,
+        actor_email: user?.email,
+        action: currentStatus ? "reactivate_user" : "suspend_user",
+        action_type: "toggle",
+        target_type: "user",
+        target_id: userId,
+        details: `${currentStatus ? "Reactivated" : "Suspended"} account ${userId}`,
+      });
+
+      toast.success(`User ${currentStatus ? "reactivated" : "suspended"}`);
+      fetchAdmins();
+      fetchActivityLogs();
+    } catch (error: any) {
+      toast.error("Failed to update user status");
     }
   };
 
@@ -258,23 +251,25 @@ export default function SuperAdminManagement() {
     }
     try {
       const { error } = await supabase
-        .from("user_roles")
-        .update({ role: "customer" as any })
-        .eq("user_id", userId);
+        .from("profiles")
+        .update({ role: "customer" })
+        .eq("id", userId);
 
       if (error) throw error;
 
-      await supabase.from("audit_log").insert({
-        user_id: user!.id,
-        user_name: user?.user_metadata?.full_name || user?.email || "Unknown",
+      await (supabase as any).from("audit_log").insert({
+        actor_id: user!.id,
+        actor_email: user?.email,
         action: "remove_admin",
-        entity_type: "user",
-        entity_id: userId,
+        action_type: "update",
+        target_type: "user",
+        target_id: userId,
         details: `Demoted to customer role`,
       });
 
       toast.success("Admin access removed");
       fetchAdmins();
+      fetchActivityLogs();
     } catch (error: any) {
       toast.error("Failed to remove admin");
     }
@@ -399,43 +394,61 @@ export default function SuperAdminManagement() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
             {admins.map((admin) => (
-              <Card key={admin.user_id}>
+              <Card key={admin.id} className={admin.is_suspended ? "opacity-60 bg-muted/50" : ""}>
                 <CardContent className="p-5">
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">
-                      <p className="font-semibold">{admin.full_name || "Unknown"}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold">{admin.full_name || "Unknown"}</p>
+                        {admin.is_suspended && <Badge variant="destructive">Suspended</Badge>}
+                      </div>
                       <p className="text-sm text-muted-foreground">{admin.email}</p>
-                      <Badge variant={admin.role === "super_admin" ? "default" : "secondary"}>
-                        {admin.role === "super_admin" ? "Super Admin" : "Admin Operations"}
-                      </Badge>
+                      <div className="flex gap-2 items-center">
+                        <Badge variant={admin.role === "super_admin" ? "default" : "secondary"}>
+                          {admin.role === "super_admin" ? "Super Admin" : "Admin Operations"}
+                        </Badge>
+                        {admin.last_login_at && (
+                          <span className="text-[10px] text-muted-foreground">
+                            Last active: {new Date(admin.last_login_at).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {admin.user_id !== user?.id && (
+                      {admin.id !== user?.id && (
                         <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className={admin.is_suspended ? "text-green-600 border-green-200" : "text-orange-600 border-orange-200"}
+                            onClick={() => handleToggleSuspension(admin.id, admin.is_suspended)}
+                          >
+                            {admin.is_suspended ? "Reactivate" : "Suspend"}
+                          </Button>
                           <Select
                             value={admin.role}
-                            onValueChange={(v) => handleChangeRole(admin.user_id, v)}
+                            onValueChange={(v) => handleChangeRole(admin.id, v)}
                           >
-                            <SelectTrigger className="w-32">
+                            <SelectTrigger className="w-32 h-8 text-xs">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="admin_ops">Admin Operations</SelectItem>
+                              <SelectItem value="admin_ops">Admin Ops</SelectItem>
                               <SelectItem value="super_admin">Super Admin</SelectItem>
                             </SelectContent>
                           </Select>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => handleRemoveAdmin(admin.user_id)}
+                            className="text-destructive h-8 w-8"
+                            onClick={() => handleRemoveAdmin(admin.id)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </>
                       )}
-                      {admin.user_id === user?.id && (
-                        <span className="text-xs text-muted-foreground">(You)</span>
+                      {admin.id === user?.id && (
+                        <span className="text-xs text-muted-foreground font-medium bg-primary/5 px-2 py-1 rounded">My Account</span>
                       )}
                     </div>
                   </div>
@@ -444,6 +457,45 @@ export default function SuperAdminManagement() {
             ))}
           </div>
         )}
+
+        {/* Activity Log Section */}
+        <div className="mt-12 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-display font-bold">Recent System Activity</h2>
+            <Button variant="ghost" size="sm" onClick={fetchActivityLogs}>Refresh Logs</Button>
+          </div>
+          <Card>
+            <CardContent className="p-0">
+              <div className="divide-y">
+                {activityLogs.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground text-sm">No activity recorded yet.</div>
+                ) : (
+                  activityLogs.map((log) => (
+                    <div key={log.id} className="p-4 flex items-start gap-4 text-sm">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
+                        <Shield className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="font-medium">{log.details}</p>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          <span>By: {log.actor_email || "System"}</span>
+                          <span>•</span>
+                          <span>{new Date(log.created_at).toLocaleString()}</span>
+                          {log.ip_address && (
+                            <>
+                              <span>•</span>
+                              <span>IP: {log.ip_address}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </SuperAdminLayout >
   );

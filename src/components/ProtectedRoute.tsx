@@ -23,11 +23,7 @@ export function ProtectedRoute({ children, allowedRole }: ProtectedRouteProps) {
   }
 
   if (allowedRole) {
-    // Super admin can also access admin_ops routes
-    const hasAccess = role === allowedRole || 
-      (allowedRole === "admin_ops" && role === "super_admin");
-    
-    if (!hasAccess) {
+    if (role !== allowedRole) {
       if (role === "super_admin") {
         return <Navigate to="/super-admin" replace />;
       }

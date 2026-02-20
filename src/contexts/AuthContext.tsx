@@ -68,11 +68,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) {
         console.error('Error fetching role:', error);
-        // If it's a real error (not just missing profile), retry
         if (retries > 0) {
           setTimeout(() => fetchUserRole(userId, retries - 1), 1000);
         } else {
           setRoleError(true);
+          setRole(null);
         }
         return;
       }
@@ -81,15 +81,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setRole(data.role as UserRole);
         setRoleError(false);
       } else {
-        // No profile found - this might be the issue for new admins
+        // No profile found - critical for strict role system
+        console.warn('No profile found for user:', userId);
         if (retries > 0) {
           setTimeout(() => fetchUserRole(userId, retries - 1), 1000);
         } else {
+          setRole(null);
           setRoleError(true);
         }
       }
     } catch (error) {
       console.error('Error in fetchUserRole:', error);
+      setRole(null);
       setRoleError(true);
     }
   };

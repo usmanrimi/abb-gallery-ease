@@ -201,72 +201,16 @@ export default function AdminOrders() {
     const statusConfig: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
       pending_payment: { variant: "outline", label: "Pending Payment" },
       waiting_for_price: { variant: "outline", label: "Waiting for Price" },
-      price_sent: { variant: "secondary", label: "Price Sent" },
       paid: { variant: "default", label: "Paid" },
       processing: { variant: "secondary", label: "Processing" },
-      ready_for_delivery: { variant: "default", label: "Ready for Delivery" },
-      out_for_delivery: { variant: "default", label: "Out for Delivery" },
+      ready_for_delivery: { variant: "secondary", label: "Ready for Delivery" },
       delivered: { variant: "default", label: "Delivered" },
       cancelled: { variant: "destructive", label: "Cancelled" },
-      pending: { variant: "outline", label: "Pending" },
-      confirmed: { variant: "default", label: "Confirmed" },
     };
     const config = statusConfig[status] || { variant: "outline" as const, label: status };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
-  const handleVerifyPayment = async (orderId: string, approved: boolean) => {
-    try {
-      const newStatus = approved ? "paid" : "pending_payment";
-      const { error } = await supabase
-        .from("orders")
-        .update({
-          payment_status: approved ? "paid" : "rejected",
-          payment_verified_at: approved ? new Date().toISOString() : null,
-          status: approved ? "processing" : "pending_payment",
-        })
-        .eq("id", orderId);
-
-      if (error) throw error;
-
-      // Get order details for notification
-      const order = orders.find((o) => o.id === orderId);
-      if (order) {
-        await supabase.from("notifications").insert({
-          user_id: order.user_id,
-          order_id: orderId,
-          title: approved ? "Payment Verified ✓" : "Payment Rejected",
-          message: approved
-            ? "Your payment has been verified. Your order is now being processed."
-            : "Your payment proof was rejected. Please upload a valid proof or contact support.",
-        });
-      }
-
-      toast({
-        title: approved ? "Payment verified" : "Payment rejected",
-        description: approved ? "Order moved to processing" : "Customer has been notified",
-      });
-
-      // Audit log
-      await logAction(
-        approved ? "verify_payment" : "reject_payment",
-        {
-          actionType: approved ? "verify_payment" : "reject_payment",
-          targetType: "order",
-          targetId: orderId,
-          details: `${approved ? "Verified" : "Rejected"} payment for ${order?.package_name || orderId}`,
-        }
-      );
-
-      fetchOrders();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
 
   return (
     <AdminLayout>
@@ -301,11 +245,9 @@ export default function AdminOrders() {
               <SelectItem value="all">All Status</SelectItem>
               <SelectItem value="pending_payment">Pending Payment</SelectItem>
               <SelectItem value="waiting_for_price">Waiting for Price</SelectItem>
-              <SelectItem value="price_sent">Price Sent</SelectItem>
               <SelectItem value="paid">Paid</SelectItem>
               <SelectItem value="processing">Processing</SelectItem>
               <SelectItem value="ready_for_delivery">Ready for Delivery</SelectItem>
-              <SelectItem value="out_for_delivery">Out for Delivery</SelectItem>
               <SelectItem value="delivered">Delivered</SelectItem>
               <SelectItem value="cancelled">Cancelled</SelectItem>
             </SelectContent>
@@ -402,55 +344,7 @@ export default function AdminOrders() {
                         </div>
                       )}
 
-                      {/* Payment Proof Section */}
-                      {order.payment_proof_url && order.payment_status === "proof_uploaded" && (
-                        <div className="p-3 mt-2 rounded-lg bg-amber-500/10 border border-amber-500/30">
-                          <div className="flex items-center justify-between mb-2">
-                            <p className="text-sm font-medium text-amber-700 flex items-center gap-2">
-                              {order.payment_proof_type === "video" ? (
-                                <Video className="h-4 w-4" />
-                              ) : (
-                                <Image className="h-4 w-4" />
-                              )}
-                              Payment Proof Uploaded
-                            </p>
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-success border-success hover:bg-success/10"
-                                onClick={() => handleVerifyPayment(order.id, true)}
-                              >
-                                <CheckCircle className="h-3 w-3 mr-1" />
-                                Approve
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-destructive border-destructive hover:bg-destructive/10"
-                                onClick={() => handleVerifyPayment(order.id, false)}
-                              >
-                                <XCircle className="h-3 w-3 mr-1" />
-                                Reject
-                              </Button>
-                            </div>
-                          </div>
-                          {order.payment_proof_type === "video" ? (
-                            <video
-                              src={order.payment_proof_url}
-                              controls
-                              className="w-full max-h-32 rounded object-contain bg-black"
-                            />
-                          ) : (
-                            <img
-                              src={order.payment_proof_url}
-                              alt="Payment proof"
-                              className="w-full max-h-32 rounded object-contain bg-muted"
-                            />
-                          )}
-                        </div>
-                      )}
-
+                      {/* Order Date */}
                       <p className="text-xs text-muted-foreground flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
                         {new Date(order.created_at).toLocaleDateString("en-NG", {
@@ -506,11 +400,9 @@ export default function AdminOrders() {
                                   <SelectContent>
                                     <SelectItem value="pending_payment">Pending Payment</SelectItem>
                                     <SelectItem value="waiting_for_price">Waiting for Price</SelectItem>
-                                    <SelectItem value="price_sent">Price Sent</SelectItem>
                                     <SelectItem value="paid">Paid</SelectItem>
                                     <SelectItem value="processing">Processing</SelectItem>
                                     <SelectItem value="ready_for_delivery">Ready for Delivery</SelectItem>
-                                    <SelectItem value="out_for_delivery">Out for Delivery</SelectItem>
                                     <SelectItem value="delivered">Delivered</SelectItem>
                                     <SelectItem value="cancelled">Cancelled</SelectItem>
                                   </SelectContent>

@@ -26,8 +26,9 @@ interface Delivery {
 }
 
 const statusOptions = [
-  { value: "ready", label: "Ready for Delivery", color: "bg-yellow-500" },
-  { value: "out_for_delivery", label: "Out for Delivery", color: "bg-blue-500" },
+  { value: "pending", label: "Pending Assignment", color: "bg-yellow-500" },
+  { value: "scheduled", label: "Scheduled", color: "bg-blue-500" },
+  { value: "out_for_delivery", label: "Out for Delivery", color: "bg-purple-500" },
   { value: "delivered", label: "Delivered", color: "bg-green-500" },
   { value: "cancelled", label: "Cancelled", color: "bg-red-500" },
 ];
@@ -69,7 +70,7 @@ export default function AdminDeliveries() {
   const updateDeliveryStatus = async (deliveryId: string, orderId: string, newStatus: string) => {
     try {
       // Update delivery status
-      const { error: deliveryError } = await supabase
+      const { error: deliveryError } = await (supabase as any)
         .from("deliveries")
         .update({ status: newStatus })
         .eq("id", deliveryId);
@@ -78,14 +79,15 @@ export default function AdminDeliveries() {
 
       // Map delivery status to order status
       const orderStatusMap: Record<string, string> = {
-        ready: "ready_for_delivery",
-        out_for_delivery: "out_for_delivery",
+        pending: "ready_for_delivery",
+        scheduled: "ready_for_delivery",
+        out_for_delivery: "ready_for_delivery",
         delivered: "delivered",
         cancelled: "cancelled",
       };
 
       // Update order status
-      const { error: orderError } = await supabase
+      const { error: orderError } = await (supabase as any)
         .from("orders")
         .update({ status: orderStatusMap[newStatus] || newStatus })
         .eq("id", orderId);
@@ -117,6 +119,46 @@ export default function AdminDeliveries() {
       toast({
         title: "Error",
         description: "Failed to update status",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const updateDeliveryDate = async (deliveryId: string, orderId: string, date: string, time: string) => {
+    try {
+      const { error: deliveryError } = await (supabase as any)
+        .from("deliveries")
+        .update({
+          delivery_date: date || null,
+          delivery_time: time || null,
+          status: "scheduled"
+        })
+        .eq("id", deliveryId);
+
+      if (deliveryError) throw deliveryError;
+
+      const { error: orderError } = await (supabase as any)
+        .from("orders")
+        .update({
+          delivery_date: date || null,
+          delivery_time: time || null
+        })
+        .eq("id", orderId);
+
+      if (orderError) throw orderError;
+
+      setDeliveries((prev) =>
+        prev.map((d) => (d.id === deliveryId ? { ...d, delivery_date: date, delivery_time: time, status: "scheduled" } : d))
+      );
+
+      toast({
+        title: "Delivery scheduled",
+        description: `Order ${orderId.slice(0, 8)} set for ${date}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to update delivery time",
         variant: "destructive",
       });
     }
@@ -261,18 +303,35 @@ export default function AdminDeliveries() {
                       )}
                     </div>
 
-                    <div className="flex flex-wrap gap-2">
-                      {statusOptions.map((status) => (
-                        <Button
-                          key={status.value}
-                          variant={delivery.status === status.value ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => updateDeliveryStatus(delivery.id, delivery.order_id, status.value)}
-                          disabled={delivery.status === status.value}
-                        >
-                          {status.label}
-                        </Button>
-                      ))}
+                    <div className="flex flex-col gap-4">
+                      <div className="flex gap-2">
+                        <Input
+                          type="date"
+                          className="w-40 h-8 text-xs"
+                          defaultValue={delivery.delivery_date || ""}
+                          onChange={(e) => updateDeliveryDate(delivery.id, delivery.order_id, e.target.value, delivery.delivery_time || "")}
+                        />
+                        <Input
+                          type="time"
+                          className="w-32 h-8 text-xs"
+                          defaultValue={delivery.delivery_time || ""}
+                          onChange={(e) => updateDeliveryDate(delivery.id, delivery.order_id, delivery.delivery_date || "", e.target.value)}
+                        />
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {statusOptions.map((status) => (
+                          <Button
+                            key={status.value}
+                            variant={delivery.status === status.value ? "default" : "outline"}
+                            size="sm"
+                            className="h-8 text-xs"
+                            onClick={() => updateDeliveryStatus(delivery.id, delivery.order_id, status.value)}
+                            disabled={delivery.status === status.value}
+                          >
+                            {status.label}
+                          </Button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </CardContent>
