@@ -60,7 +60,19 @@ DO $$ BEGIN
   ALTER TABLE public.audit_log ADD COLUMN IF NOT EXISTS user_agent TEXT;
 END $$;
 
--- 4. RLS Update (Strict 3-Layer)
+-- 4. Chat Messages Table (Global Chat)
+CREATE TABLE IF NOT EXISTS public.chat_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    sender_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    message TEXT,
+    image_url TEXT,
+    sender_role TEXT DEFAULT 'customer',
+    is_read BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 5. RLS Update (Strict 3-Layer)
 
 -- Enable RLS on new tables
 ALTER TABLE public.global_settings ENABLE ROW LEVEL SECURITY;
@@ -71,7 +83,7 @@ DECLARE
   _tbl TEXT;
   _pol RECORD;
 BEGIN
-  FOR _tbl IN SELECT unnest(ARRAY['profiles','packages','package_classes','orders','notifications','deliveries','category_settings','audit_log','order_messages', 'global_settings'])
+  FOR _tbl IN SELECT unnest(ARRAY['profiles','packages','package_classes','orders','notifications','deliveries','category_settings','audit_log','order_messages', 'global_settings', 'chat_messages'])
   LOOP
     FOR _pol IN SELECT policyname FROM pg_policies WHERE schemaname = 'public' AND tablename = _tbl
     LOOP
@@ -106,8 +118,8 @@ CREATE POLICY "Staff manage deliveries" ON public.deliveries FOR ALL USING (publ
 CREATE POLICY "Customers own deliveries" ON public.deliveries FOR SELECT USING (EXISTS (SELECT 1 FROM public.orders o WHERE o.id = order_id AND o.user_id = auth.uid()));
 
 -- CHAT (Global Chat per Customer)
-CREATE POLICY "Staff chat access" ON public.order_messages FOR ALL USING (public.get_my_role() IN ('admin_ops', 'super_admin'));
-CREATE POLICY "Customers own messages" ON public.order_messages FOR ALL USING (EXISTS (SELECT 1 FROM public.orders o WHERE o.id = order_id AND o.user_id = auth.uid()));
+CREATE POLICY "Staff chat access" ON public.chat_messages FOR ALL USING (public.get_my_role() IN ('admin_ops', 'super_admin'));
+CREATE POLICY "Customers own chat" ON public.chat_messages FOR ALL USING (auth.uid() = user_id OR auth.uid() = sender_id);
 
 -- AUDIT LOG (Only Super Admin manages, Admin Ops reads)
 CREATE POLICY "Super admin audit management" ON public.audit_log FOR ALL USING (public.get_my_role() = 'super_admin');
