@@ -19,7 +19,7 @@ export default function Login() {
   });
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { signIn, user, role, loading } = useAuth();
+  const { signIn, user, role, loading, roleError, refreshRole } = useAuth();
 
   // DEBUG: Check Supabase Config
   useEffect(() => {
@@ -47,16 +47,17 @@ export default function Login() {
 
   // Redirect if already logged in
   useEffect(() => {
-    if (!loading && user && role) {
+    if (!loading && user && role && !roleError) {
+      console.log("Redirecting based on role:", role);
       if (role === "super_admin") {
         navigate("/super-admin");
       } else if (role === "admin_ops") {
         navigate("/admin");
-      } else {
+      } else if (role === "customer") {
         navigate("/dashboard");
       }
     }
-  }, [user, role, loading, navigate]);
+  }, [user, role, loading, navigate, roleError]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,6 +87,34 @@ export default function Login() {
       <Layout hideFooter>
         <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (roleError && user) {
+    return (
+      <Layout hideFooter>
+        <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center py-12 px-4">
+          <Card className="w-full max-w-md p-6 text-center space-y-4">
+            <div className="flex justify-center">
+              <div className="bg-destructive/10 p-3 rounded-full">
+                <Mail className="h-6 w-6 text-destructive" />
+              </div>
+            </div>
+            <CardTitle>Profile Load Failed</CardTitle>
+            <CardDescription>
+              We couldn't load your account details. This often happens if the account creation is still processing or there's a slow connection.
+            </CardDescription>
+            <div className="pt-4 space-y-2">
+              <Button onClick={() => refreshRole()} className="w-full">
+                Retry Loading Profile
+              </Button>
+              <Button variant="outline" onClick={() => window.location.reload()} className="w-full">
+                Refresh Page
+              </Button>
+            </div>
+          </Card>
         </div>
       </Layout>
     );
