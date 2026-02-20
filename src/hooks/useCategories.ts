@@ -9,15 +9,18 @@ export interface Category {
     image_url: string | null;
     slug: string;
     is_coming_soon: boolean;
+    is_visible: boolean;
+    created_at?: string;
 }
 
 export function useCategories() {
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<Error | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
     const fetchCategories = async () => {
         setLoading(true);
+        setError(null);
         try {
             const { data, error: dbError } = await (supabase as any)
                 .from("categories")
@@ -27,8 +30,10 @@ export function useCategories() {
             if (dbError) throw dbError;
             setCategories(data as Category[] || []);
         } catch (err: any) {
+            const msg = err.message || "Failed to fetch categories";
             console.error("Error fetching categories:", err);
-            setError(err);
+            setError(msg);
+            toast.error(msg);
         } finally {
             setLoading(false);
         }
@@ -48,10 +53,13 @@ export function useCategories() {
 
             if (error) throw error;
             await fetchCategories();
+            toast.success("Category added successfully");
             return { success: true, data };
         } catch (err: any) {
+            const msg = err.message || "Failed to add category";
             console.error("Error adding category:", err);
-            return { success: false, error: err };
+            toast.error(msg);
+            return { success: false, error: msg };
         }
     };
 
@@ -66,8 +74,10 @@ export function useCategories() {
             await fetchCategories();
             return { success: true };
         } catch (err: any) {
+            const msg = err.message || "Failed to update category";
             console.error("Error updating category:", err);
-            return { success: false, error: err };
+            toast.error(msg);
+            return { success: false, error: msg };
         }
     };
 
@@ -80,10 +90,13 @@ export function useCategories() {
 
             if (error) throw error;
             await fetchCategories();
+            toast.success("Category deleted");
             return { success: true };
         } catch (err: any) {
+            const msg = err.message || "Failed to delete category";
             console.error("Error deleting category:", err);
-            return { success: false, error: err };
+            toast.error(msg);
+            return { success: false, error: msg };
         }
     };
 

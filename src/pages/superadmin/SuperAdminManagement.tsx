@@ -38,7 +38,7 @@ export default function SuperAdminManagement() {
   const fetchAdmins = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("profiles")
         .select("id, role, full_name, email, is_suspended, last_login_at")
         .in("role", ["admin_ops", "super_admin"])
@@ -74,125 +74,55 @@ export default function SuperAdminManagement() {
     }
     setCreating(true);
     try {
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: newAdmin.email,
-        password: newAdmin.password,
-        options: {
-          data: { full_name: newAdmin.fullName },
+      const { data, error } = await supabase.functions.invoke("admin-management", {
+        body: {
+          action: "createUser",
+          email: newAdmin.email,
+          password: newAdmin.password,
+          fullName: newAdmin.fullName,
+          role: newAdmin.role,
         },
       });
 
-      if (signUpError) throw signUpError;
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-      if (signUpData.user) {
-        const userId = signUpData.user.id;
-        const { error: profileError } = await (supabase
-          .from("profiles") as any)
-          .upsert({
-            id: userId,
-            full_name: newAdmin.fullName,
-            email: newAdmin.email,
-            role: newAdmin.role,
-          });
+      // Log the action Locally for the Super Admin
+      await (supabase as any).from("audit_log").insert({
+        actor_id: user!.id,
+        actor_email: user?.email,
+        actor_role: "super_admin",
+        action: "create_admin",
+        action_type: "create",
+        target_type: "user",
+        target_id: data.user.id,
+        details: `Created ${newAdmin.role} account for ${newAdmin.email}`,
+      });
 
-        if (profileError) throw profileError;
+      toast.success(`${newAdmin.role === "super_admin" ? "Super Admin" : "Admin Operations"} account created!`);
 
-        // Log the action
-        await (supabase as any).from("audit_log").insert({
-          actor_id: user!.id,
-          actor_email: user?.email,
-          actor_role: "super_admin",
-          action: "create_admin",
-          action_type: "create",
-          target_type: "user",
-          target_id: userId,
-          details: `Created ${newAdmin.role} account for ${newAdmin.email}`,
-        });
+      // Keep the password visible so it can be copied
+      const credentials = `Email: ${newAdmin.email}\nPassword: ${newAdmin.password}`;
+      navigator.clipboard.writeText(credentials);
+      toast.info("Credentials copied to clipboard!");
 
-        toast.success(`${newAdmin.role === "super_admin" ? "Super Admin" : "Admin Operations"} account created!`);
-        setDialogOpen(false);
-        setNewAdmin({ email: "", password: "", fullName: "", role: "admin_ops" });
-        fetchAdmins();
-        fetchActivityLogs();
-      }
+      setDialogOpen(false);
+      setNewAdmin({ email: "", password: "", fullName: "", role: "admin_ops" });
+      fetchAdmins();
+      fetchActivityLogs();
     } catch (error: any) {
+      console.error("Creation error:", error);
       toast.error(error.message || "Failed to create admin");
     } finally {
       setCreating(false);
     }
   };
 
-  const [testLogs, setTestLogs] = useState<{ step: string; status: "pass" | "fail" | "pending" }[]>([]);
-  const [testing, setTesting] = useState(false);
-
-  const runAdminTest = async () => {
-    setTesting(true);
-    const timestamp = Date.now();
-    const testEmail = `test-adminops+${timestamp}@example.com`;
-    const testPassword = "AdminTestPassword123!";
-    const testFullName = "QA Test Admin";
-
-    const logs: { step: string; status: "pass" | "fail" | "pending" }[] = [
-      { step: "Auth user created", status: "pending" },
-      { step: "Profile role saved correctly", status: "pending" },
-      { step: "Audit log recorded", status: "pending" },
-    ];
-    setTestLogs([...logs]);
-
-    try {
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: testEmail,
-        password: testPassword,
-        options: { data: { full_name: testFullName } },
-      });
-
-      if (signUpError || !signUpData.user) {
-        logs[0].status = "fail";
-        setTestLogs([...logs]);
-        throw new Error("Auth creation failed");
-      }
-      logs[0].status = "pass";
-      setTestLogs([...logs]);
-
-      const userId = signUpData.user.id;
-      const { error: profileError } = await supabase.from("profiles").upsert({
-        id: userId,
-        full_name: testFullName,
-        email: testEmail,
-        role: "admin_ops",
-      });
-
-      if (profileError) {
-        logs[1].status = "fail";
-        setTestLogs([...logs]);
-        throw new Error("Profile upsert failed");
-      }
-      logs[1].status = "pass";
-      setTestLogs([...logs]);
-
-      await (supabase as any).from("audit_log").insert({
-        actor_id: user!.id,
-        actor_email: user?.email,
-        action: "qa_test",
-        action_type: "create",
-        target_type: "user",
-        target_id: userId,
-        details: "QA internal test: admin creation",
-      });
-      logs[2].status = "pass";
-      setTestLogs([...logs]);
-
-      toast.success("QA Internal Test Completed Successfully");
-    } catch (err: any) {
-      toast.error(err.message || "Test failed");
-    } finally {
-      setTesting(false);
-    }
-  };
+  // QA Test logic removed
 
   const handleChangeRole = async (userId: string, newRole: string) => {
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("profiles")
         .update({ role: newRole })
         .eq("id", userId);
@@ -219,7 +149,7 @@ export default function SuperAdminManagement() {
 
   const handleToggleSuspension = async (userId: string, currentStatus: boolean) => {
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("profiles")
         .update({ is_suspended: !currentStatus })
         .eq("id", userId);
@@ -250,7 +180,7 @@ export default function SuperAdminManagement() {
       return;
     }
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("profiles")
         .update({ role: "customer" })
         .eq("id", userId);
@@ -284,10 +214,6 @@ export default function SuperAdminManagement() {
             <p className="text-muted-foreground">Manage admin accounts and permissions</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={runAdminTest} disabled={testing}>
-              {testing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Beaker className="h-4 w-4 mr-2" />}
-              Run Admin Creation Test
-            </Button>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
@@ -348,36 +274,7 @@ export default function SuperAdminManagement() {
           </div>
         </div>
 
-        {testLogs.length > 0 && (
-          <Card className="bg-muted/30 border-primary/20">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold flex items-center">
-                  <Beaker className="h-4 w-4 mr-2" />
-                  Test Results
-                </h3>
-                <Button variant="ghost" size="sm" onClick={() => setTestLogs([])}>Clear</Button>
-              </div>
-              <div className="space-y-2">
-                {testLogs.map((log, i) => (
-                  <div key={i} className="flex items-center justify-between text-sm">
-                    <span>{log.step}</span>
-                    {log.status === "pass" ? (
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
-                    ) : log.status === "fail" ? (
-                      <XCircle className="h-4 w-4 text-red-500" />
-                    ) : (
-                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                    )}
-                  </div>
-                ))}
-              </div>
-              <p className="text-[10px] text-muted-foreground mt-4">
-                Note: Test accounts are real auth users. Manual deletion from Supabase Auth is recommended for cleanup.
-              </p>
-            </CardContent>
-          </Card>
-        )}
+        {/* Test results removed */}
 
         {loading ? (
           <div className="flex items-center justify-center py-16">

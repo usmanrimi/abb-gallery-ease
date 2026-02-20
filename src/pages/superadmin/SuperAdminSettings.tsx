@@ -10,6 +10,7 @@ import { useCategories } from "@/hooks/useCategories";
 import { useGlobalSettings } from "@/hooks/useGlobalSettings";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ImageUpload } from "@/components/admin/ImageUpload";
 import { Loader2, Package, Save, Palette, CreditCard, Settings, ToggleRight, List } from "lucide-react";
 
 export default function SuperAdminSettings() {
@@ -88,44 +89,42 @@ export default function SuperAdminSettings() {
                   <CardDescription>Control the visual identity of your gallery.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <ImageUpload
+                      label="Store Logo"
+                      defaultValue={settings?.logo_url || ""}
+                      onUpload={(url) => updateSettings({ logo_url: url })}
+                      bucket="branding"
+                    />
+                    <ImageUpload
+                      label="Favicon"
+                      defaultValue={settings?.favicon_url || ""}
+                      onUpload={(url) => updateSettings({ favicon_url: url })}
+                      bucket="branding"
+                    />
                     <div className="space-y-2">
-                      <Label>Store Logo URL</Label>
-                      <Input
-                        value={settings?.logo_url || ""}
-                        onChange={(e) => updateSettings({ logo_url: e.target.value })}
-                        placeholder="https://example.com/logo.png"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Favicon URL</Label>
-                      <Input
-                        value={settings?.favicon_url || ""}
-                        onChange={(e) => updateSettings({ favicon_url: e.target.value })}
-                        placeholder="https://example.com/favicon.ico"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Theme Primary Color</Label>
-                      <div className="flex gap-2">
+                      <div className="space-y-2">
+                        <Label>Theme Primary Color</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            type="color"
+                            className="w-12 h-10 p-1"
+                            value={settings?.theme_color || "#8B5CF6"}
+                            onChange={(e) => updateSettings({ theme_color: e.target.value })}
+                          />
+                          <Input
+                            value={settings?.theme_color || ""}
+                            onChange={(e) => updateSettings({ theme_color: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Footer Text</Label>
                         <Input
-                          type="color"
-                          className="w-12 h-10 p-1"
-                          value={settings?.theme_color || "#8B5CF6"}
-                          onChange={(e) => updateSettings({ theme_color: e.target.value })}
-                        />
-                        <Input
-                          value={settings?.theme_color || ""}
-                          onChange={(e) => updateSettings({ theme_color: e.target.value })}
+                          value={settings?.footer_text || ""}
+                          onChange={(e) => updateSettings({ footer_text: e.target.value })}
                         />
                       </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Footer Text</Label>
-                      <Input
-                        value={settings?.footer_text || ""}
-                        onChange={(e) => updateSettings({ footer_text: e.target.value })}
-                      />
                     </div>
                   </div>
                 </CardContent>

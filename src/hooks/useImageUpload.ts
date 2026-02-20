@@ -49,7 +49,7 @@ export function useImageUpload() {
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
-        .from("package-images")
+        .from(bucket)
         .getPublicUrl(filePath);
 
       return { url: publicUrl, error: null };

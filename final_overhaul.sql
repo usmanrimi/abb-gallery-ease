@@ -19,6 +19,29 @@ DO $$ BEGIN
   ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;
 END $$;
 
+-- 2. Categories Table
+CREATE TABLE IF NOT EXISTS public.categories (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    description TEXT,
+    image_url TEXT,
+    slug TEXT NOT NULL UNIQUE,
+    is_coming_soon BOOLEAN DEFAULT false,
+    is_visible BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Migrate from legacy category_settings if it exists
+DO $$ BEGIN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'category_settings') THEN
+        INSERT INTO public.categories (id, name, description, slug, is_coming_soon)
+        SELECT gen_random_uuid(), category_id, custom_label, category_id, is_coming_soon
+        FROM public.category_settings
+        ON CONFLICT (slug) DO NOTHING;
+    END IF;
+END $$;
+
 -- 2. Global Settings Table
 CREATE TABLE IF NOT EXISTS public.global_settings (
     id TEXT PRIMARY KEY DEFAULT 'current',
@@ -60,7 +83,14 @@ DO $$ BEGIN
   ALTER TABLE public.audit_log ADD COLUMN IF NOT EXISTS user_agent TEXT;
 END $$;
 
--- 4. Chat Messages Table (Global Chat)
+-- 5. Storage Buckets (Ensuring they exist)
+INSERT INTO storage.buckets (id, name, public) VALUES 
+('category-images', 'category-images', true),
+('package-images', 'package-images', true),
+('branding', 'branding', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- 6. Chat Messages Table (Global Chat)
 CREATE TABLE IF NOT EXISTS public.chat_messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -83,7 +113,7 @@ DECLARE
   _tbl TEXT;
   _pol RECORD;
 BEGIN
-  FOR _tbl IN SELECT unnest(ARRAY['profiles','packages','package_classes','orders','notifications','deliveries','category_settings','audit_log','order_messages', 'global_settings', 'chat_messages'])
+  FOR _tbl IN SELECT unnest(ARRAY['profiles','packages','package_classes','orders','notifications','deliveries','category_settings','categories','audit_log','order_messages', 'global_settings', 'chat_messages'])
   LOOP
     FOR _pol IN SELECT policyname FROM pg_policies WHERE schemaname = 'public' AND tablename = _tbl
     LOOP
@@ -102,6 +132,11 @@ CREATE POLICY "Public read global settings" ON public.global_settings FOR SELECT
 CREATE POLICY "Super admin manage global settings" ON public.global_settings FOR ALL USING (public.get_my_role() = 'super_admin');
 
 -- CATEGORIES & PACKAGES
+CREATE POLICY "Public read categories" ON public.categories FOR SELECT USING (true);
+CREATE POLICY "Super admin manage categories" ON public.categories FOR ALL USING (public.get_my_role() = 'super_admin');
+CREATE POLICY "Staff read categories" ON public.categories FOR SELECT USING (public.get_my_role() IN ('admin_ops', 'super_admin'));
+CREATE POLICY "Staff update categories" ON public.categories FOR UPDATE USING (public.get_my_role() IN ('admin_ops', 'super_admin'));
+
 CREATE POLICY "Public read content" ON public.packages FOR SELECT USING (true);
 CREATE POLICY "Public read content classes" ON public.package_classes FOR SELECT USING (true);
 CREATE POLICY "Super admin manage content" ON public.packages FOR ALL USING (public.get_my_role() = 'super_admin');
@@ -173,3 +208,18 @@ BEGIN
   RETURN v_prefix || LPAD(v_serial::text, v_padding, '0');
 END;
 $$;
+
+-- 6. Storage Policies (Strict 3-Layer)
+DO $$ 
+DECLARE
+  _bucket TEXT;
+BEGIN
+  FOR _bucket IN SELECT unnest(ARRAY['category-images', 'package-images', 'branding', 'uploads'])
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS "Anyone can read %s" ON storage.objects', _bucket);
+    EXECUTE format('CREATE POLICY "Anyone can read %s" ON storage.objects FOR SELECT USING (bucket_id = %L)', _bucket, _bucket);
+    
+    EXECUTE format('DROP POLICY IF EXISTS "Staff manage %s" ON storage.objects', _bucket);
+    EXECUTE format('CREATE POLICY "Staff manage %s" ON storage.objects FOR ALL USING (bucket_id = %L AND public.get_my_role() IN (''admin_ops'', ''super_admin''))', _bucket, _bucket);
+  END LOOP;
+END $$;

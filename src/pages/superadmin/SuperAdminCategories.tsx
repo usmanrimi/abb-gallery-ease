@@ -7,8 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useCategories, Category } from "@/hooks/useCategories";
-import { useImageUpload } from "@/hooks/useImageUpload";
 import { useAuditLog } from "@/hooks/useAuditLog";
+import { ImageUpload } from "@/components/admin/ImageUpload";
 import { toast } from "sonner";
 import {
     Plus,
@@ -18,9 +18,7 @@ import {
     Edit2,
     Loader2,
     RefreshCw,
-    AlertCircle,
     Package,
-    X
 } from "lucide-react";
 import {
     Dialog,
@@ -32,7 +30,6 @@ import {
 
 export default function SuperAdminCategories() {
     const { categories, loading, addCategory, updateCategory, deleteCategory, refetch } = useCategories();
-    const { uploadImage, uploading: uploadingImage } = useImageUpload();
     const { logAction } = useAuditLog();
 
     const [searchTerm, setSearchTerm] = useState("");
@@ -75,22 +72,6 @@ export default function SuperAdminCategories() {
         setIsDialogOpen(true);
     };
 
-    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        try {
-            const { url, error } = await uploadImage(file, "categories", "category-images");
-            if (error) throw new Error(error);
-            if (url) {
-                setFormData(prev => ({ ...prev, image_url: url }));
-                toast.success("Image uploaded successfully");
-            }
-        } catch (err: any) {
-            toast.error(err.message || "Failed to upload image");
-        }
-    };
-
     const handleSave = async () => {
         if (!formData.name || !formData.slug) {
             toast.error("Name and Slug are required");
@@ -100,28 +81,33 @@ export default function SuperAdminCategories() {
         setSaving(true);
         try {
             if (editingCategory) {
-                await updateCategory(editingCategory.id, formData);
-                toast.success("Category updated successfully");
-                await logAction("update_category", {
-                    actionType: "update",
-                    targetType: "category",
-                    targetId: editingCategory.id,
-                    details: `Updated category: ${formData.name}`
-                });
+                const result = await updateCategory(editingCategory.id, formData);
+                if (result.success) {
+                    toast.success("Category updated successfully");
+                    await logAction("update_category", {
+                        actionType: "update",
+                        targetType: "category",
+                        targetId: editingCategory.id,
+                        details: `Updated category: ${formData.name}`
+                    });
+                    setIsDialogOpen(false);
+                }
             } else {
-                const id = Math.random().toString(36).substring(7);
-                await addCategory({ ...formData, id } as any);
-                toast.success("Category created successfully");
-                await logAction("create_category", {
-                    actionType: "create",
-                    targetType: "category",
-                    targetId: id,
-                    details: `Created category: ${formData.name}`
-                });
+                const result = await addCategory(formData as any);
+                if (result.success) {
+                    toast.success("Category created successfully");
+                    await logAction("create_category", {
+                        actionType: "create",
+                        targetType: "category",
+                        targetId: (result.data as any).id,
+                        details: `Created category: ${formData.name}`
+                    });
+                    setIsDialogOpen(false);
+                }
             }
-            setIsDialogOpen(false);
-        } catch (err) {
+        } catch (err: any) {
             console.error("Save error:", err);
+            toast.error(err.message || "Failed to save category");
         } finally {
             setSaving(false);
         }
@@ -133,16 +119,18 @@ export default function SuperAdminCategories() {
         }
 
         try {
-            await deleteCategory(category.id);
-            toast.success("Category deleted");
-            await logAction("delete_category", {
-                actionType: "delete",
-                targetType: "category",
-                targetId: category.id,
-                details: `Deleted category: ${category.name}`
-            });
-        } catch (err) {
+            const result = await deleteCategory(category.id);
+            if (result.success) {
+                await logAction("delete_category", {
+                    actionType: "delete",
+                    targetType: "category",
+                    targetId: category.id,
+                    details: `Deleted category: ${category.name}`
+                });
+            }
+        } catch (err: any) {
             console.error("Delete error:", err);
+            toast.error(err.message || "Failed to delete category");
         }
     };
 
@@ -150,8 +138,9 @@ export default function SuperAdminCategories() {
         try {
             await updateCategory(category.id, { is_coming_soon: !category.is_coming_soon });
             toast.success(`${category.name} is now ${!category.is_coming_soon ? "Coming Soon" : "Live"}`);
-        } catch (err) {
+        } catch (err: any) {
             console.error("Toggle error:", err);
+            toast.error(err.message || "Failed to toggle status");
         }
     };
 
@@ -202,12 +191,12 @@ export default function SuperAdminCategories() {
                     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                         {filteredCategories.map((category) => (
                             <Card key={category.id} className="overflow-hidden group">
-                                <div className="aspect-video bg-muted relative overflow-hidden">
+                                <div className="aspect-video bg-muted/30 relative overflow-hidden border-b">
                                     {category.image_url ? (
                                         <img
                                             src={category.image_url}
                                             alt={category.name}
-                                            className="w-full h-full object-cover"
+                                            className="w-full h-full object-contain"
                                         />
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center">
@@ -248,8 +237,8 @@ export default function SuperAdminCategories() {
                                             onCheckedChange={() => toggleComingSoon(category)}
                                         />
                                     </div>
-                                    <CardDescription className="font-mono text-[10px] uppercase">
-                                        ID: {category.id} | SLUG: {category.slug}
+                                    <CardDescription className="font-mono text-[10px] uppercase truncate">
+                                        SLUG: {category.slug}
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="p-4 pt-0">
@@ -320,62 +309,19 @@ export default function SuperAdminCategories() {
                             </div>
 
                             <div className="space-y-4">
-                                <Label>Category Image</Label>
-                                <div className="aspect-video rounded-lg border-2 border-dashed flex flex-col items-center justify-center relative overflow-hidden bg-muted/30">
-                                    {formData.image_url ? (
-                                        <>
-                                            <img
-                                                src={formData.image_url}
-                                                alt="Preview"
-                                                className="w-full h-full object-cover"
-                                            />
-                                            <Button
-                                                size="icon"
-                                                variant="destructive"
-                                                className="absolute top-2 right-2 h-8 w-8"
-                                                onClick={() => setFormData(prev => ({ ...prev, image_url: "" }))}
-                                            >
-                                                <X className="h-4 w-4" />
-                                            </Button>
-                                        </>
-                                    ) : (
-                                        <div className="flex flex-col items-center gap-2 p-4 text-center">
-                                            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-2">
-                                                {uploadingImage ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}
-                                            </div>
-                                            <p className="text-sm font-medium">Upload Image</p>
-                                            <p className="text-[10px] text-muted-foreground text-pretty">Recommended size: 1600x1000px</p>
-                                            <input
-                                                type="file"
-                                                className="absolute inset-0 opacity-0 cursor-pointer"
-                                                onChange={handleImageUpload}
-                                                disabled={uploadingImage}
-                                                accept="image/*"
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-                                {uploadingImage && (
-                                    <div className="flex items-center gap-2 text-xs text-primary animate-pulse">
-                                        <Loader2 className="h-3 w-3 animate-spin" /> Uploading image...
-                                    </div>
-                                )}
-                                {formData.image_url && (
-                                    <div className="flex items-start gap-2 p-3 rounded-lg bg-green-50 text-green-700 border border-green-200">
-                                        <ImageIcon className="h-4 w-4 mt-0.5" />
-                                        <div>
-                                            <p className="text-xs font-bold">Image linked successfully</p>
-                                            <p className="text-[10px] truncate max-w-[180px]">{formData.image_url}</p>
-                                        </div>
-                                    </div>
-                                )}
+                                <ImageUpload
+                                    label="Category Image"
+                                    defaultValue={formData.image_url}
+                                    bucket="category-images"
+                                    onUpload={(url) => setFormData(prev => ({ ...prev, image_url: url }))}
+                                />
                             </div>
                         </div>
                         <DialogFooter>
                             <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={saving}>
                                 Cancel
                             </Button>
-                            <Button onClick={handleSave} disabled={saving || uploadingImage}>
+                            <Button onClick={handleSave} disabled={saving}>
                                 {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                                 {editingCategory ? "Update Category" : "Create Category"}
                             </Button>
