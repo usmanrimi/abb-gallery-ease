@@ -6,7 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { categories, formatPrice } from "@/data/categories";
+import { formatPrice } from "@/data/categories";
+import { useCategories } from "@/hooks/useCategories";
 import { Package as PackageIcon, ChevronRight, Minus, Plus, Calculator, Check, ShoppingCart, CreditCard, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/contexts/CartContext";
@@ -21,7 +22,8 @@ export default function PackageDetail() {
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const { user } = useAuth();
-  
+  const { categories, loading: categoriesLoading } = useCategories();
+
   const [pkg, setPkg] = useState<Package | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedClass, setSelectedClass] = useState("");
@@ -37,7 +39,7 @@ export default function PackageDetail() {
   useEffect(() => {
     const fetchPackage = async () => {
       if (!id) return;
-      
+
       setLoading(true);
       try {
         const { data: dbPackage, error } = await supabase
@@ -72,7 +74,7 @@ export default function PackageDetail() {
         };
 
         setPkg(packageWithClasses);
-        
+
         // Set default selected class
         if (packageWithClasses.has_classes && packageWithClasses.classes && packageWithClasses.classes.length > 0) {
           setSelectedClass(packageWithClasses.classes[0].id);
@@ -88,7 +90,7 @@ export default function PackageDetail() {
     fetchPackage();
   }, [id]);
 
-  if (loading) {
+  if (loading || categoriesLoading) {
     return (
       <Layout>
         <div className="container py-16 flex items-center justify-center">
@@ -113,11 +115,11 @@ export default function PackageDetail() {
 
   const isCustomSelected = selectedClass === "custom";
   const selectedClassData = pkg.classes?.find((c) => c.id === selectedClass);
-  
+
   // For custom, use starting price as base; otherwise use class price or base price
-  const unitPrice = isCustomSelected 
+  const unitPrice = isCustomSelected
     ? (pkg.starting_price || 0)
-    : pkg.has_classes 
+    : pkg.has_classes
       ? (selectedClassData?.price || pkg.starting_price || 0)
       : (pkg.base_price || 0);
 
@@ -168,7 +170,7 @@ export default function PackageDetail() {
       if (error) throw error;
 
       toast.success("Custom request submitted! Waiting for admin to set price.");
-      
+
       navigate("/order-confirmation", {
         state: {
           cartItems: [{
@@ -216,8 +218,8 @@ export default function PackageDetail() {
 
     addToCart({
       package: cartPackage,
-      selectedClass: isCustomSelected 
-        ? { id: "custom", name: "Custom", price: unitPrice, description: "Custom request" } 
+      selectedClass: isCustomSelected
+        ? { id: "custom", name: "Custom", price: unitPrice, description: "Custom request" }
         : pkg.has_classes ? selectedClassData : undefined,
       quantity,
       notes,
@@ -271,11 +273,11 @@ export default function PackageDetail() {
             <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary mb-4">
               {category.name}
             </div>
-            
+
             <h1 className="text-3xl font-bold font-display md:text-4xl mb-4">
               {pkg.name}
             </h1>
-            
+
             <p className="text-muted-foreground text-lg mb-2">
               {pkg.description}
             </p>
@@ -331,7 +333,7 @@ export default function PackageDetail() {
                           </div>
                         </Label>
                       ))}
-                      
+
                       {/* Custom Option */}
                       <Label
                         htmlFor="custom"
@@ -360,7 +362,7 @@ export default function PackageDetail() {
                         </div>
                       </Label>
                     </RadioGroup>
-                    
+
                     {/* Custom Request Text Area */}
                     {isCustomSelected && (
                       <div className="space-y-2 pt-2">

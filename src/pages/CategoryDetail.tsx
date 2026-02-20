@@ -2,20 +2,22 @@ import { useParams, Link, Navigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { getCategoryBySlug, categories, formatPrice } from "@/data/categories";
+import { formatPrice } from "@/data/categories";
 import { Package as PackageIcon, ArrowRight, ChevronRight, Loader2 } from "lucide-react";
-import { useCategorySettings } from "@/hooks/useCategorySettings";
+import { useCategories } from "@/hooks/useCategories";
 import { usePackages } from "@/hooks/usePackages";
 
 export default function CategoryDetail() {
   const { slug } = useParams<{ slug: string }>();
-  const { isComingSoon } = useCategorySettings();
-  const category = getCategoryBySlug(slug || "");
-  
-  // Use database packages instead of static
-  const { packages: categoryPackages, loading } = usePackages(category?.id);
+  const { categories, loading: categoriesLoading } = useCategories();
+  const category = categories.find((cat) => cat.slug === slug);
 
-  if (!category) {
+  // Use database packages instead of static
+  const { packages: categoryPackages, loading: packagesLoading } = usePackages(category?.id);
+
+  const loading = categoriesLoading || (category && packagesLoading);
+
+  if (!loading && !category) {
     return (
       <Layout>
         <div className="container py-16 text-center">
@@ -28,8 +30,19 @@ export default function CategoryDetail() {
     );
   }
 
+  // Loading State
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        </div>
+      </Layout>
+    );
+  }
+
   // Redirect if category is Coming Soon
-  if (isComingSoon(category.slug)) {
+  if (category?.is_coming_soon) {
     return <Navigate to="/categories" replace />;
   }
 
@@ -42,23 +55,18 @@ export default function CategoryDetail() {
           <ChevronRight className="h-3 w-3" />
           <Link to="/categories" className="hover:text-primary">Categories</Link>
           <ChevronRight className="h-3 w-3" />
-          <span className="text-foreground">{category.name}</span>
+          <span className="text-foreground">{category?.name}</span>
         </nav>
 
         {/* Category Header */}
         <div className="mb-10">
-          <h1 className="text-3xl font-bold font-display md:text-4xl">{category.name}</h1>
+          <h1 className="text-3xl font-bold font-display md:text-4xl">{category?.name}</h1>
           <p className="mt-2 text-lg text-muted-foreground max-w-2xl">
-            {category.description}
+            {category?.description}
           </p>
         </div>
 
-        {/* Loading State */}
-        {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : categoryPackages.length === 0 ? (
+        {categoryPackages.length === 0 ? (
           <div className="text-center py-16">
             <PackageIcon className="h-16 w-16 text-muted-foreground/40 mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">No packages available</h3>
@@ -135,7 +143,7 @@ export default function CategoryDetail() {
           <h2 className="text-xl font-display font-semibold mb-6">Other Categories</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {categories
-              .filter((c) => c.id !== category.id && !isComingSoon(c.slug))
+              .filter((c) => c.id !== category?.id && !c.is_coming_soon)
               .map((cat) => (
                 <Link
                   key={cat.id}
@@ -143,8 +151,8 @@ export default function CategoryDetail() {
                   className="group flex items-center gap-3 p-4 rounded-xl border hover:border-primary/50 hover:bg-muted/50 transition-all"
                 >
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary overflow-hidden">
-                    {cat.image && cat.image !== "/placeholder.svg" ? (
-                      <img src={cat.image} alt={cat.name} className="w-full h-full object-contain" />
+                    {cat.image_url && cat.image_url !== "/placeholder.svg" ? (
+                      <img src={cat.image_url} alt={cat.name} className="w-full h-full object-contain" />
                     ) : (
                       <PackageIcon className="h-5 w-5" />
                     )}

@@ -10,7 +10,7 @@ interface UploadResult {
 export function useImageUpload() {
   const [uploading, setUploading] = useState(false);
 
-  const uploadImage = async (file: File, path?: string): Promise<UploadResult> => {
+  const uploadImage = async (file: File, path?: string, bucket: string = "package-images"): Promise<UploadResult> => {
     if (!file) {
       return { url: null, error: "No file provided" };
     }
@@ -37,7 +37,7 @@ export function useImageUpload() {
 
       // Upload to Supabase Storage
       const { error: uploadError } = await supabase.storage
-        .from("package-images")
+        .from(bucket)
         .upload(filePath, file, {
           cacheControl: "3600",
           upsert: false,
@@ -61,15 +61,15 @@ export function useImageUpload() {
     }
   };
 
-  const deleteImage = async (url: string): Promise<boolean> => {
+  const deleteImage = async (url: string, bucket: string = "package-images"): Promise<boolean> => {
     try {
       // Extract file path from URL
-      const urlParts = url.split("/package-images/");
+      const urlParts = url.split(`/${bucket}/`);
       if (urlParts.length < 2) return false;
 
       const filePath = urlParts[1];
       const { error } = await supabase.storage
-        .from("package-images")
+        .from(bucket)
         .remove([filePath]);
 
       return !error;

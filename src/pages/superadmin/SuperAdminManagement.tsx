@@ -88,31 +88,37 @@ export default function SuperAdminManagement() {
 
       if (signUpData.user) {
         const userId = signUpData.user.id;
-
         // IMMEDIATELY upsert into public.profiles to ensure role is set
-        // Do not rely on trigger only
-        const { error: profileError } = await supabase.from("profiles").upsert({
-          id: userId,
-          full_name: newAdmin.fullName,
-          email: newAdmin.email,
-          role: newAdmin.role, // Explicitly set the role here!
-        });
+        // If user already exists as customer, this will change their role
+        const { data: profileCheck, error: profileError } = await (supabase
+          .from("profiles") as any)
+          .upsert({
+            id: userId,
+            full_name: newAdmin.fullName,
+            email: newAdmin.email,
+            role: newAdmin.role,
+          }, { onConflict: 'id' })
+          .select('role')
+          .single();
 
         if (profileError) {
-          console.error("Error creating profile:", profileError);
-          // Still try to continue to user_roles
+          throw new Error(`Profile creation failed: ${profileError.message}`);
         }
 
-        // Assign role via user_roles table (legacy support and redundancy)
-        const { error: roleError } = await supabase
-          .from("user_roles")
+        if (profileCheck?.role !== newAdmin.role) {
+          throw new Error(`Role assignment failed. Expected ${newAdmin.role}, got ${profileCheck?.role}`);
+        }
+
+        // Assign/Update legacy user_roles table
+        const { error: roleTableError } = await (supabase
+          .from("user_roles") as any)
           .upsert(
             { user_id: userId, role: newAdmin.role as any },
             { onConflict: "user_id" }
           );
 
-        if (roleError) {
-          console.error("Error assigning user_role:", roleError);
+        if (roleTableError) {
+          console.warn("Legacy user_roles update failed, but profile role is set:", roleTableError);
         }
 
         // Log the action

@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { categories } from "@/data/categories";
 
 export interface PackageClass {
   id: string;
@@ -37,8 +36,8 @@ export function usePackages(categoryId?: string) {
   const fetchPackages = async () => {
     setLoading(true);
     try {
-      let query = supabase
-        .from("packages")
+      let query = (supabase
+        .from("packages") as any)
         .select("*")
         .eq("is_hidden", false);
 
@@ -59,15 +58,15 @@ export function usePackages(categoryId?: string) {
       if (dbPackages && dbPackages.length > 0) {
         // Fetch classes for each package
         const packageIds = dbPackages.map(p => p.id);
-        const { data: classesData } = await supabase
-          .from("package_classes")
+        const { data: classesData } = await (supabase
+          .from("package_classes") as any)
           .select("*")
           .in("package_id", packageIds)
           .order("sort_order", { ascending: true });
 
-        const packagesWithClasses = dbPackages.map(pkg => ({
+        const packagesWithClasses = (dbPackages as any[]).map(pkg => ({
           ...pkg,
-          classes: classesData?.filter(c => c.package_id === pkg.id).map(c => ({
+          classes: classesData?.filter((c: any) => c.package_id === pkg.id).map((c: any) => ({
             id: c.id,
             name: c.name,
             price: Number(c.price),
@@ -76,7 +75,7 @@ export function usePackages(categoryId?: string) {
           })) || [],
         }));
 
-        setPackages(packagesWithClasses);
+        setPackages(packagesWithClasses as Package[]);
       } else {
         setPackages([]);
       }
@@ -104,8 +103,8 @@ export function useAdminPackages() {
   const fetchPackages = async () => {
     setLoading(true);
     try {
-      const { data: dbPackages, error: dbError } = await supabase
-        .from("packages")
+      const { data: dbPackages, error: dbError } = await (supabase
+        .from("packages") as any)
         .select("*")
         .order("category_id", { ascending: true })
         .order("created_at", { ascending: true });
@@ -120,15 +119,15 @@ export function useAdminPackages() {
 
       if (dbPackages && dbPackages.length > 0) {
         const packageIds = dbPackages.map(p => p.id);
-        const { data: classesData } = await supabase
-          .from("package_classes")
+        const { data: classesData } = await (supabase
+          .from("package_classes") as any)
           .select("*")
           .in("package_id", packageIds)
           .order("sort_order", { ascending: true });
 
-        const packagesWithClasses = dbPackages.map(pkg => ({
+        const packagesWithClasses = (dbPackages as any[]).map(pkg => ({
           ...pkg,
-          classes: classesData?.filter(c => c.package_id === pkg.id).map(c => ({
+          classes: classesData?.filter((c: any) => c.package_id === pkg.id).map((c: any) => ({
             id: c.id,
             name: c.name,
             price: Number(c.price),
@@ -137,7 +136,7 @@ export function useAdminPackages() {
           })) || [],
         }));
 
-        setPackages(packagesWithClasses);
+        setPackages(packagesWithClasses as Package[]);
       } else {
         setPackages([]);
       }
@@ -154,16 +153,16 @@ export function useAdminPackages() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: profile } = await supabase
-        .from("profiles")
+      const { data: profile } = await (supabase
+        .from("profiles") as any)
         .select("email, role")
         .eq("id", user.id)
         .single();
 
-      await supabase.from("audit_log").insert({
+      await (supabase.from("audit_log") as any).insert({
         actor_id: user.id,
-        actor_email: profile?.email || user.email || "",
-        actor_role: profile?.role || "unknown",
+        actor_email: (profile as any)?.email || user.email || "",
+        actor_role: (profile as any)?.role || "unknown",
         action,
         action_type: action,
         target_type: "package",
@@ -176,8 +175,8 @@ export function useAdminPackages() {
   };
 
   const addPackage = async (pkg: Omit<Package, "id" | "is_hidden" | "classes"> & { classes?: Omit<PackageClass, "id">[] }) => {
-    const { data, error } = await supabase
-      .from("packages")
+    const { data, error } = await (supabase
+      .from("packages") as any)
       .insert({
         category_id: pkg.category_id,
         name: pkg.name,
@@ -202,7 +201,7 @@ export function useAdminPackages() {
         sort_order: index,
       }));
 
-      await supabase.from("package_classes").insert(classesToInsert);
+      await (supabase.from("package_classes") as any).insert(classesToInsert);
     }
 
     await logAuditAction("create_package", data?.id || "", `Created package: ${pkg.name}`);
@@ -211,8 +210,8 @@ export function useAdminPackages() {
   };
 
   const updatePackage = async (id: string, updates: Partial<Omit<Package, "classes">> & { classes?: Omit<PackageClass, "id">[] }) => {
-    const { error } = await supabase
-      .from("packages")
+    const { error } = await (supabase
+      .from("packages") as any)
       .update({
         name: updates.name,
         description: updates.description,
@@ -229,8 +228,8 @@ export function useAdminPackages() {
     if (error) throw error;
 
     if (updates.classes !== undefined) {
-      await supabase
-        .from("package_classes")
+      await (supabase
+        .from("package_classes") as any)
         .delete()
         .eq("package_id", id);
 
@@ -243,7 +242,7 @@ export function useAdminPackages() {
           sort_order: index,
         }));
 
-        await supabase.from("package_classes").insert(classesToInsert);
+        await (supabase.from("package_classes") as any).insert(classesToInsert);
       }
     }
 
@@ -253,8 +252,8 @@ export function useAdminPackages() {
 
   const deletePackage = async (id: string) => {
     const pkg = packages.find(p => p.id === id);
-    const { error } = await supabase
-      .from("packages")
+    const { error } = await (supabase
+      .from("packages") as any)
       .delete()
       .eq("id", id);
 
@@ -265,8 +264,8 @@ export function useAdminPackages() {
 
   const toggleVisibility = async (id: string, isHidden: boolean) => {
     const pkg = packages.find(p => p.id === id);
-    const { error } = await supabase
-      .from("packages")
+    const { error } = await (supabase
+      .from("packages") as any)
       .update({ is_hidden: isHidden })
       .eq("id", id);
 
@@ -289,10 +288,4 @@ export function useAdminPackages() {
     deletePackage,
     toggleVisibility,
   };
-}
-
-// Get category name from ID
-export function getCategoryName(categoryId: string): string {
-  const category = categories.find(c => c.id === categoryId);
-  return category?.name || "Unknown";
 }

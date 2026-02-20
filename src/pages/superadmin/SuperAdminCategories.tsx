@@ -1,117 +1,387 @@
 import { SuperAdminLayout } from "@/components/admin/SuperAdminLayout";
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { categories } from "@/data/categories";
-import { supabase } from "@/integrations/supabase/client";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useCategories, Category } from "@/hooks/useCategories";
+import { useImageUpload } from "@/hooks/useImageUpload";
 import { useAuditLog } from "@/hooks/useAuditLog";
 import { toast } from "sonner";
-import { Package, Lock, Unlock, Loader2, RefreshCw } from "lucide-react";
+import {
+    Plus,
+    Search,
+    Image as ImageIcon,
+    Trash2,
+    Edit2,
+    Loader2,
+    RefreshCw,
+    AlertCircle,
+    Package,
+    X
+} from "lucide-react";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog";
 
 export default function SuperAdminCategories() {
-    const [settings, setSettings] = useState<Record<string, boolean>>({});
-    const [loading, setLoading] = useState(true);
-    const [updating, setUpdating] = useState<string | null>(null);
+    const { categories, loading, addCategory, updateCategory, deleteCategory, refetch } = useCategories();
+    const { uploadImage, uploading: uploadingImage } = useImageUpload();
     const { logAction } = useAuditLog();
 
-    useEffect(() => { fetchSettings(); }, []);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+    const [formData, setFormData] = useState({
+        name: "",
+        description: "",
+        slug: "",
+        is_coming_soon: false,
+        image_url: ""
+    });
+    const [saving, setSaving] = useState(false);
 
-    const fetchSettings = async () => {
-        setLoading(true);
-        try {
-            const { data, error } = await supabase.from("category_settings").select("*");
-            if (error) throw error;
-            const settingsMap: Record<string, boolean> = {};
-            data?.forEach((s: any) => { settingsMap[s.category_id] = s.is_coming_soon; });
-            setSettings(settingsMap);
-        } catch (error) {
-            console.error("Error fetching category settings:", error);
-            toast.error("Failed to load category settings");
-        } finally { setLoading(false); }
+    const filteredCategories = categories.filter(cat =>
+        cat.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        cat.slug.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const handleOpenDialog = (category?: Category) => {
+        if (category) {
+            setEditingCategory(category);
+            setFormData({
+                name: category.name,
+                description: category.description || "",
+                slug: category.slug,
+                is_coming_soon: category.is_coming_soon,
+                image_url: category.image_url || ""
+            });
+        } else {
+            setEditingCategory(null);
+            setFormData({
+                name: "",
+                description: "",
+                slug: "",
+                is_coming_soon: false,
+                image_url: ""
+            });
+        }
+        setIsDialogOpen(true);
     };
 
-    const toggleComingSoon = async (categoryId: string, currentValue: boolean) => {
-        setUpdating(categoryId);
-        const newValue = !currentValue;
-        try {
-            const { data: existing } = await supabase
-                .from("category_settings").select("*").eq("category_id", categoryId).single();
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
 
-            let error;
-            if (existing) {
-                const { error: e } = await supabase.from("category_settings")
-                    .update({ is_coming_soon: newValue, updated_at: new Date().toISOString() })
-                    .eq("category_id", categoryId);
-                error = e;
-            } else {
-                const { error: e } = await supabase.from("category_settings")
-                    .insert({ category_id: categoryId, is_coming_soon: newValue });
-                error = e;
+        try {
+            const { url, error } = await uploadImage(file, "categories", "category-images");
+            if (error) throw new Error(error);
+            if (url) {
+                setFormData(prev => ({ ...prev, image_url: url }));
+                toast.success("Image uploaded successfully");
             }
-            if (error) throw error;
-            setSettings(prev => ({ ...prev, [categoryId]: newValue }));
-            const catName = categories.find(c => c.id === categoryId)?.name || categoryId;
-            toast.success(`Category ${newValue ? "marked as Coming Soon" : "is now Live"}`);
-            await logAction(newValue ? "category_coming_soon" : "category_go_live", {
-                actionType: "update_category", targetType: "category", targetId: categoryId,
-                details: `${catName} → ${newValue ? "Coming Soon" : "Live"}`,
+        } catch (err: any) {
+            toast.error(err.message || "Failed to upload image");
+        }
+    };
+
+    const handleSave = async () => {
+        if (!formData.name || !formData.slug) {
+            toast.error("Name and Slug are required");
+            return;
+        }
+
+        setSaving(true);
+        try {
+            if (editingCategory) {
+                await updateCategory(editingCategory.id, formData);
+                toast.success("Category updated successfully");
+                await logAction("update_category", {
+                    actionType: "update",
+                    targetType: "category",
+                    targetId: editingCategory.id,
+                    details: `Updated category: ${formData.name}`
+                });
+            } else {
+                const id = Math.random().toString(36).substring(7);
+                await addCategory({ ...formData, id } as any);
+                toast.success("Category created successfully");
+                await logAction("create_category", {
+                    actionType: "create",
+                    targetType: "category",
+                    targetId: id,
+                    details: `Created category: ${formData.name}`
+                });
+            }
+            setIsDialogOpen(false);
+        } catch (err) {
+            console.error("Save error:", err);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDelete = async (category: Category) => {
+        if (!confirm(`Are you sure you want to delete "${category.name}"? This may affect packages in this category.`)) {
+            return;
+        }
+
+        try {
+            await deleteCategory(category.id);
+            toast.success("Category deleted");
+            await logAction("delete_category", {
+                actionType: "delete",
+                targetType: "category",
+                targetId: category.id,
+                details: `Deleted category: ${category.name}`
             });
-        } catch (error) {
-            console.error("Error updating category:", error);
-            toast.error("Failed to update category status");
-        } finally { setUpdating(null); }
+        } catch (err) {
+            console.error("Delete error:", err);
+        }
+    };
+
+    const toggleComingSoon = async (category: Category) => {
+        try {
+            await updateCategory(category.id, { is_coming_soon: !category.is_coming_soon });
+            toast.success(`${category.name} is now ${!category.is_coming_soon ? "Coming Soon" : "Live"}`);
+        } catch (err) {
+            console.error("Toggle error:", err);
+        }
     };
 
     return (
         <SuperAdminLayout>
             <div className="space-y-6">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl font-display font-bold">Categories</h1>
-                        <p className="text-muted-foreground">Manage category visibility and settings</p>
+                        <h1 className="text-3xl font-display font-bold">Category Management</h1>
+                        <p className="text-muted-foreground">Add and manage product categories and visibility</p>
                     </div>
-                    <Button variant="outline" size="sm" onClick={fetchSettings} disabled={loading}>
-                        <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} /> Refresh
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" onClick={() => refetch()} disabled={loading}>
+                            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                        </Button>
+                        <Button onClick={() => handleOpenDialog()}>
+                            <Plus className="h-4 w-4 mr-2" /> New Category
+                        </Button>
+                    </div>
                 </div>
+
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search categories..."
+                        className="pl-10"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+
                 {loading ? (
-                    <div className="flex items-center justify-center py-16">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <div className="flex items-center justify-center py-20">
+                        <Loader2 className="h-10 w-10 animate-spin text-primary" />
                     </div>
+                ) : filteredCategories.length === 0 ? (
+                    <Card className="border-dashed">
+                        <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                            <Package className="h-12 w-12 text-muted-foreground/30 mb-4" />
+                            <h3 className="text-lg font-semibold">No categories found</h3>
+                            <p className="text-muted-foreground mb-6">Create your first category to get started.</p>
+                            <Button onClick={() => handleOpenDialog()}>
+                                <Plus className="h-4 w-4 mr-2" /> Add Category
+                            </Button>
+                        </CardContent>
+                    </Card>
                 ) : (
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        {categories.map((category) => {
-                            const isComingSoon = settings[category.id] || false;
-                            const isUpdating = updating === category.id;
-                            return (
-                                <Card key={category.id} className={isComingSoon ? "bg-muted/40 border-dashed" : ""}>
-                                    <CardHeader className="pb-2">
-                                        <CardTitle className="text-lg flex items-center gap-2">
-                                            <div className={`p-2 rounded-lg ${isComingSoon ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"}`}>
-                                                <Package className="h-5 w-5" />
-                                            </div>
-                                            {category.name}
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <p className="text-sm text-muted-foreground mb-4 line-clamp-2 h-10">{category.description}</p>
-                                        <div className="flex items-center justify-between p-3 rounded-lg bg-card border shadow-sm">
-                                            <div className="flex items-center gap-2">
-                                                {isComingSoon ? <Lock className="h-4 w-4 text-orange-500" /> : <Unlock className="h-4 w-4 text-green-500" />}
-                                                <span className="font-medium text-sm">{isComingSoon ? "Coming Soon (Locked)" : "Live (Visible)"}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                {isUpdating && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
-                                                <Switch checked={isComingSoon} onCheckedChange={() => toggleComingSoon(category.id, isComingSoon)} disabled={isUpdating} />
-                                            </div>
+                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                        {filteredCategories.map((category) => (
+                            <Card key={category.id} className="overflow-hidden group">
+                                <div className="aspect-video bg-muted relative overflow-hidden">
+                                    {category.image_url ? (
+                                        <img
+                                            src={category.image_url}
+                                            alt={category.name}
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center">
+                                            <ImageIcon className="h-10 w-10 text-muted-foreground/20" />
                                         </div>
-                                    </CardContent>
-                                </Card>
-                            );
-                        })}
+                                    )}
+                                    <div className="absolute top-2 right-2 flex gap-1">
+                                        <Button
+                                            size="icon"
+                                            variant="secondary"
+                                            className="h-8 w-8 bg-background/80 backdrop-blur-sm"
+                                            onClick={() => handleOpenDialog(category)}
+                                        >
+                                            <Edit2 className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                            size="icon"
+                                            variant="destructive"
+                                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            onClick={() => handleDelete(category)}
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                    {category.is_coming_soon && (
+                                        <div className="absolute top-2 left-2">
+                                            <span className="bg-orange-500 text-white px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
+                                                Coming Soon
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                                <CardHeader className="p-4 pb-2">
+                                    <div className="flex items-center justify-between">
+                                        <CardTitle className="text-xl font-display">{category.name}</CardTitle>
+                                        <Switch
+                                            checked={!category.is_coming_soon}
+                                            onCheckedChange={() => toggleComingSoon(category)}
+                                        />
+                                    </div>
+                                    <CardDescription className="font-mono text-[10px] uppercase">
+                                        ID: {category.id} | SLUG: {category.slug}
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="p-4 pt-0">
+                                    <p className="text-sm text-muted-foreground line-clamp-2 h-10">
+                                        {category.description || "No description provided."}
+                                    </p>
+                                </CardContent>
+                            </Card>
+                        ))}
                     </div>
                 )}
+
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                    <DialogContent className="max-w-2xl">
+                        <DialogHeader>
+                            <DialogTitle>{editingCategory ? "Edit Category" : "New Category"}</DialogTitle>
+                        </DialogHeader>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="name">Category Name</Label>
+                                    <Input
+                                        id="name"
+                                        value={formData.name}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                name: val,
+                                                slug: prev.slug || val.toLowerCase().replace(/ /g, "-").replace(/[^\w-]+/g, "")
+                                            }));
+                                        }}
+                                        placeholder="e.g. Kayan Lefe"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="slug">Slug (URL path)</Label>
+                                    <Input
+                                        id="slug"
+                                        value={formData.slug}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, slug: e.target.value }))}
+                                        placeholder="kayan-lefe"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="description">Description</Label>
+                                    <Textarea
+                                        id="description"
+                                        className="h-24"
+                                        value={formData.description}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                                        placeholder="Brief overview of this category..."
+                                    />
+                                </div>
+                                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
+                                    <div className="space-y-0.5">
+                                        <Label>Active Status</Label>
+                                        <p className="text-[10px] text-muted-foreground">Toggle "Coming Soon" status</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-medium">{formData.is_coming_soon ? "Coming Soon" : "Live"}</span>
+                                        <Switch
+                                            checked={!formData.is_coming_soon}
+                                            onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_coming_soon: !checked }))}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <Label>Category Image</Label>
+                                <div className="aspect-video rounded-lg border-2 border-dashed flex flex-col items-center justify-center relative overflow-hidden bg-muted/30">
+                                    {formData.image_url ? (
+                                        <>
+                                            <img
+                                                src={formData.image_url}
+                                                alt="Preview"
+                                                className="w-full h-full object-cover"
+                                            />
+                                            <Button
+                                                size="icon"
+                                                variant="destructive"
+                                                className="absolute top-2 right-2 h-8 w-8"
+                                                onClick={() => setFormData(prev => ({ ...prev, image_url: "" }))}
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </Button>
+                                        </>
+                                    ) : (
+                                        <div className="flex flex-col items-center gap-2 p-4 text-center">
+                                            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-2">
+                                                {uploadingImage ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}
+                                            </div>
+                                            <p className="text-sm font-medium">Upload Image</p>
+                                            <p className="text-[10px] text-muted-foreground text-pretty">Recommended size: 1600x1000px</p>
+                                            <input
+                                                type="file"
+                                                className="absolute inset-0 opacity-0 cursor-pointer"
+                                                onChange={handleImageUpload}
+                                                disabled={uploadingImage}
+                                                accept="image/*"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                                {uploadingImage && (
+                                    <div className="flex items-center gap-2 text-xs text-primary animate-pulse">
+                                        <Loader2 className="h-3 w-3 animate-spin" /> Uploading image...
+                                    </div>
+                                )}
+                                {formData.image_url && (
+                                    <div className="flex items-start gap-2 p-3 rounded-lg bg-green-50 text-green-700 border border-green-200">
+                                        <ImageIcon className="h-4 w-4 mt-0.5" />
+                                        <div>
+                                            <p className="text-xs font-bold">Image linked successfully</p>
+                                            <p className="text-[10px] truncate max-w-[180px]">{formData.image_url}</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={saving}>
+                                Cancel
+                            </Button>
+                            <Button onClick={handleSave} disabled={saving || uploadingImage}>
+                                {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                                {editingCategory ? "Update Category" : "Create Category"}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         </SuperAdminLayout>
     );

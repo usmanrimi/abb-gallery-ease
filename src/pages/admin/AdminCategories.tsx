@@ -1,77 +1,24 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { categories } from "@/data/categories";
-import { supabase } from "@/integrations/supabase/client";
+import { useCategories } from "@/hooks/useCategories";
 import { useAuditLog } from "@/hooks/useAuditLog";
 import { toast } from "sonner";
 import { Package, Lock, Unlock, Loader2, RefreshCw } from "lucide-react";
 
 export default function AdminCategories() {
-    const [settings, setSettings] = useState<Record<string, boolean>>({});
-    const [loading, setLoading] = useState(true);
+    const { categories, loading, updateCategory, refetch } = useCategories();
     const [updating, setUpdating] = useState<string | null>(null);
     const { logAction } = useAuditLog();
-
-    useEffect(() => {
-        fetchSettings();
-    }, []);
-
-    const fetchSettings = async () => {
-        setLoading(true);
-        try {
-            const { data, error } = await supabase
-                .from("category_settings")
-                .select("*");
-
-            if (error) throw error;
-
-            const settingsMap: Record<string, boolean> = {};
-            data?.forEach((s: any) => {
-                settingsMap[s.category_id] = s.is_coming_soon;
-            });
-
-            setSettings(settingsMap);
-        } catch (error) {
-            console.error("Error fetching category settings:", error);
-            toast.error("Failed to load category settings");
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const toggleComingSoon = async (categoryId: string, currentValue: boolean) => {
         setUpdating(categoryId);
         const newValue = !currentValue;
 
         try {
-            // Check if setting exists first
-            const { data: existing } = await supabase
-                .from("category_settings")
-                .select("*")
-                .eq("category_id", categoryId)
-                .single();
-
-            let error;
-
-            if (existing) {
-                const { error: updateError } = await supabase
-                    .from("category_settings")
-                    .update({ is_coming_soon: newValue, updated_at: new Date().toISOString() })
-                    .eq("category_id", categoryId);
-                error = updateError;
-            } else {
-                const { error: insertError } = await supabase
-                    .from("category_settings")
-                    .insert({ category_id: categoryId, is_coming_soon: newValue });
-                error = insertError;
-            }
-
-            if (error) throw error;
-
-            setSettings(prev => ({ ...prev, [categoryId]: newValue }));
+            await updateCategory(categoryId, { is_coming_soon: newValue });
 
             const categoryName = categories.find(c => c.id === categoryId)?.name || categoryId;
             toast.success(`Category ${newValue ? "marked as Coming Soon" : "is now Live"}`);
@@ -98,7 +45,7 @@ export default function AdminCategories() {
                         <h1 className="text-2xl font-display font-bold">Categories</h1>
                         <p className="text-muted-foreground">Manage category visibility and other settings</p>
                     </div>
-                    <Button variant="outline" size="sm" onClick={fetchSettings} disabled={loading}>
+                    <Button variant="outline" size="sm" onClick={refetch} disabled={loading}>
                         <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
                         Refresh
                     </Button>
@@ -111,7 +58,7 @@ export default function AdminCategories() {
                 ) : (
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {categories.map((category) => {
-                            const isComingSoon = settings[category.id] || false;
+                            const isComingSoon = category.is_coming_soon;
                             const isUpdating = updating === category.id;
 
                             return (
@@ -144,7 +91,7 @@ export default function AdminCategories() {
                                                 {isUpdating && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
                                                 <Switch
                                                     checked={isComingSoon}
-                                                    onCheckedChange={() => toggleComingSoon(category.id, isComingSoon)}
+                                                    onCheckedChange={() => toggleComingSoon(category.id, isComingSoon || false)}
                                                     disabled={isUpdating}
                                                 />
                                             </div>

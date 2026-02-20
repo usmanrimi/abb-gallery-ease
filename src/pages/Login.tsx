@@ -54,7 +54,7 @@ export default function Login() {
       } else if (role === "admin_ops") {
         navigate("/admin");
       } else if (role === "customer") {
-        navigate("/dashboard");
+        navigate("/customer");
       }
     }
   }, [user, role, loading, navigate, roleError]);

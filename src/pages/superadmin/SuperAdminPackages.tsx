@@ -6,16 +6,29 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useAdminPackages, getCategoryName } from "@/hooks/usePackages";
-import { categories } from "@/data/categories";
+import { useAdminPackages } from "@/hooks/usePackages";
+import { useCategories } from "@/hooks/useCategories";
 import { formatPrice } from "@/data/categories";
 import { toast } from "sonner";
 import { Package, Plus, Pencil, Trash2, Eye, EyeOff, Search, Loader2, RefreshCw } from "lucide-react";
 
 export default function SuperAdminPackages() {
-    const { packages, loading, refetch, addPackage, updatePackage, deletePackage, toggleVisibility } = useAdminPackages();
+    const { packages, loading: packagesLoading, refetch: refetchPackages, addPackage, updatePackage, deletePackage, toggleVisibility } = useAdminPackages();
+    const { categories, loading: categoriesLoading, refetch: refetchCategories } = useCategories();
     const [searchQuery, setSearchQuery] = useState("");
     const [categoryFilter, setCategoryFilter] = useState("all");
+
+    const loading = packagesLoading || categoriesLoading;
+
+    const refetch = () => {
+        refetchPackages();
+        refetchCategories();
+    };
+
+    const getCategoryName = (categoryId: string) => {
+        const category = categories.find(c => c.id === categoryId);
+        return category?.name || "Unknown";
+    };
 
     const filteredPackages = packages.filter((pkg) => {
         const matchesSearch = pkg.name.toLowerCase().includes(searchQuery.toLowerCase()) ||

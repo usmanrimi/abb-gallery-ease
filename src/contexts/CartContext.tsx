@@ -1,10 +1,11 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from "react";
-import { Package, PackageClass, formatPrice } from "@/data/categories";
+import { formatPrice } from "@/data/categories";
+import { Package, PackageClass } from "@/hooks/usePackages";
 
 export interface CartItem {
   id: string;
-  package: Package;
-  selectedClass?: PackageClass;
+  package: any; // Using any to stay compatible with both old and new structures for now
+  selectedClass?: any;
   quantity: number;
   notes: string;
   unitPrice: number;
@@ -36,7 +37,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [items]);
 
   const addToCart = (item: Omit<CartItem, "id">) => {
-    const id = `${item.package.id}-${item.selectedClass?.id || "base"}-${Date.now()}`;
+    const p = item.package as any;
+    const id = `${p.id || p.ID}-${item.selectedClass?.id || "base"}-${Date.now()}`;
     setItems((prev) => [...prev, { ...item, id }]);
   };
 

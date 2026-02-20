@@ -2,13 +2,15 @@ import { Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { categories } from "@/data/categories";
-import { ArrowRight, Package as PackageIcon, Truck, CreditCard, Star, ChevronRight, Home, Store } from "lucide-react";
+import { useCategories } from "@/hooks/useCategories";
+import { ArrowRight, Package as PackageIcon, Truck, CreditCard, Star, ChevronRight, Home, Store, Loader2 } from "lucide-react";
 import logo from "@/assets/logo.png";
-import { useCategorySettings } from "@/hooks/useCategorySettings";
 
 const Index = () => {
-  const { isComingSoon } = useCategorySettings();
+  const { categories, loading } = useCategories();
+
+  // For the hero section and features, we want a few categories to show
+  const displayCategories = categories.slice(0, 4);
 
   return (
     <Layout>
@@ -29,7 +31,7 @@ const Index = () => {
                 <span className="text-primary">Easy</span>
               </h1>
               <p className="text-lg text-muted-foreground max-w-lg">
-                Discover premium celebration packages for every occasion. From Sallah to weddings, 
+                Discover premium celebration packages for every occasion. From Sallah to weddings,
                 we've got everything you need delivered right to your doorstep.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
@@ -51,47 +53,51 @@ const Index = () => {
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_40%,hsl(var(--primary)/0.2),transparent_50%)]" />
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_60%,hsl(var(--accent)/0.2),transparent_50%)]" />
                 <div className="relative h-full w-full flex items-center justify-center">
-                <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
-                    {categories.slice(0, 4).map((cat, i) => {
-                      const comingSoon = isComingSoon(cat.slug);
-                      const hasImage = cat.image && cat.image !== "/placeholder.svg";
-                      
-                      if (comingSoon) {
+                  {loading ? (
+                    <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                  ) : (
+                    <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
+                      {displayCategories.map((cat, i) => {
+                        const comingSoon = cat.is_coming_soon;
+                        const hasImage = cat.image_url && cat.image_url !== "/placeholder.svg";
+
+                        if (comingSoon) {
+                          return (
+                            <div
+                              key={cat.id}
+                              className="aspect-square rounded-2xl bg-card shadow-elevated overflow-hidden flex flex-col items-center justify-center text-center animate-float opacity-60 relative cursor-not-allowed"
+                              style={{ animationDelay: `${i * 0.2}s` }}
+                              onClick={() => alert("Coming Soon")}
+                            >
+                              {hasImage ? (
+                                <img src={cat.image_url} alt={cat.name} className="absolute inset-0 w-full h-full object-contain p-2" />
+                              ) : (
+                                <PackageIcon className="h-8 w-8 text-muted-foreground mb-2" />
+                              )}
+                              <span className="absolute bottom-2 left-2 right-2 text-sm font-medium line-clamp-2 text-muted-foreground bg-background/80 rounded px-1">{cat.name}</span>
+                              <span className="absolute top-2 right-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">Coming Soon</span>
+                            </div>
+                          );
+                        }
+
                         return (
-                          <div
+                          <Link
                             key={cat.id}
-                            className="aspect-square rounded-2xl bg-card shadow-elevated overflow-hidden flex flex-col items-center justify-center text-center animate-float opacity-60 relative cursor-not-allowed"
+                            to={`/categories/${cat.slug}`}
+                            className="aspect-square rounded-2xl bg-card shadow-elevated overflow-hidden flex flex-col items-center justify-center text-center animate-float hover:scale-105 transition-transform cursor-pointer relative"
                             style={{ animationDelay: `${i * 0.2}s` }}
-                            onClick={() => alert("Coming Soon")}
                           >
                             {hasImage ? (
-                              <img src={cat.image} alt={cat.name} className="absolute inset-0 w-full h-full object-contain p-2" />
+                              <img src={cat.image_url} alt={cat.name} className="absolute inset-0 w-full h-full object-contain p-2" />
                             ) : (
-                              <PackageIcon className="h-8 w-8 text-muted-foreground mb-2" />
+                              <PackageIcon className="h-8 w-8 text-primary mb-2" />
                             )}
-                            <span className="absolute bottom-2 left-2 right-2 text-sm font-medium line-clamp-2 text-muted-foreground bg-background/80 rounded px-1">{cat.name}</span>
-                            <span className="absolute top-2 right-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">Coming Soon</span>
-                          </div>
+                            <span className="absolute bottom-2 left-2 right-2 text-sm font-medium line-clamp-2 bg-background/80 rounded px-1">{cat.name}</span>
+                          </Link>
                         );
-                      }
-                      
-                      return (
-                        <Link
-                          key={cat.id}
-                          to={`/categories/${cat.slug}`}
-                          className="aspect-square rounded-2xl bg-card shadow-elevated overflow-hidden flex flex-col items-center justify-center text-center animate-float hover:scale-105 transition-transform cursor-pointer relative"
-                          style={{ animationDelay: `${i * 0.2}s` }}
-                        >
-                          {hasImage ? (
-                            <img src={cat.image} alt={cat.name} className="absolute inset-0 w-full h-full object-contain p-2" />
-                          ) : (
-                            <PackageIcon className="h-8 w-8 text-primary mb-2" />
-                          )}
-                          <span className="absolute bottom-2 left-2 right-2 text-sm font-medium line-clamp-2 bg-background/80 rounded px-1">{cat.name}</span>
-                        </Link>
-                      );
-                    })}
-                  </div>
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -99,7 +105,7 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Features Section - Updated with Home Services and Store Shopping */}
+      {/* Features Section */}
       <section className="border-y bg-muted/30">
         <div className="container py-12">
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
@@ -107,7 +113,7 @@ const Index = () => {
               { icon: PackageIcon, title: "Quality Packages", desc: "Curated premium items" },
               { icon: Truck, title: "Fast Delivery", desc: "To your doorstep" },
               { icon: CreditCard, title: "Easy Payments", desc: "Flexible installments" },
-              { icon: Home, title: "Home Services", desc: "Free and Past" },
+              { icon: Home, title: "Home Services", desc: "Free and Fast" },
               { icon: Store, title: "Store Shopping", desc: "Visit our gallery" },
             ].map((feature, i) => (
               <div
@@ -144,92 +150,98 @@ const Index = () => {
             </Link>
           </div>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {categories.map((category, i) => {
-              const comingSoon = isComingSoon(category.slug);
-              
-              if (comingSoon) {
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {categories.map((category, i) => {
+                const comingSoon = category.is_coming_soon;
+
+                if (comingSoon) {
+                  return (
+                    <div
+                      key={category.id}
+                      className="group cursor-not-allowed"
+                      onClick={() => alert("Coming Soon")}
+                    >
+                      <Card
+                        className="overflow-hidden animate-slide-up opacity-60"
+                        style={{ animationDelay: `${i * 0.1}s` }}
+                      >
+                        <div className="aspect-[4/3] bg-gradient-to-br from-muted/30 to-muted/10 relative overflow-hidden flex items-center justify-center">
+                          {category.image_url ? (
+                            <img
+                              src={category.image_url}
+                              alt={category.name}
+                              className="max-w-full max-h-full object-contain p-2"
+                            />
+                          ) : (
+                            <PackageIcon className="h-16 w-16 text-muted-foreground/40" />
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
+                          <div className="absolute bottom-4 left-4 right-4">
+                            <h3 className="font-display font-semibold text-lg text-muted-foreground">{category.name}</h3>
+                          </div>
+                          <span className="absolute top-3 right-3 text-xs bg-primary/10 text-primary px-3 py-1 rounded-full font-medium">
+                            Coming Soon
+                          </span>
+                        </div>
+                        <CardContent className="p-4">
+                          <p className="text-sm text-muted-foreground line-clamp-2">
+                            {category.description}
+                          </p>
+                          <div className="mt-3 flex items-center gap-1 text-muted-foreground text-sm font-medium">
+                            Coming Soon
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  );
+                }
+
                 return (
-                  <div
+                  <Link
                     key={category.id}
-                    className="group cursor-not-allowed"
-                    onClick={() => alert("Coming Soon")}
+                    to={`/categories/${category.slug}`}
+                    className="group"
                   >
                     <Card
-                      className="overflow-hidden animate-slide-up opacity-60"
+                      variant="interactive"
+                      className="overflow-hidden animate-slide-up"
                       style={{ animationDelay: `${i * 0.1}s` }}
                     >
-                      <div className="aspect-[4/3] bg-gradient-to-br from-muted/30 to-muted/10 relative overflow-hidden flex items-center justify-center">
-                        {category.image && category.image !== "/placeholder.svg" ? (
-                          <img 
-                            src={category.image} 
+                      <div className="aspect-[4/3] bg-gradient-to-br from-primary/10 to-accent/10 relative overflow-hidden flex items-center justify-center">
+                        {category.image_url ? (
+                          <img
+                            src={category.image_url}
                             alt={category.name}
-                            className="max-w-full max-h-full object-contain p-2"
+                            className="max-w-full max-h-full object-contain p-2 group-hover:scale-105 transition-transform duration-300"
                           />
                         ) : (
-                          <PackageIcon className="h-16 w-16 text-muted-foreground/40" />
+                          <PackageIcon className="h-16 w-16 text-primary/40" />
                         )}
                         <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
                         <div className="absolute bottom-4 left-4 right-4">
-                          <h3 className="font-display font-semibold text-lg text-muted-foreground">{category.name}</h3>
+                          <h3 className="font-display font-semibold text-lg">{category.name}</h3>
                         </div>
-                        <span className="absolute top-3 right-3 text-xs bg-primary/10 text-primary px-3 py-1 rounded-full font-medium">
-                          Coming Soon
-                        </span>
                       </div>
                       <CardContent className="p-4">
                         <p className="text-sm text-muted-foreground line-clamp-2">
                           {category.description}
                         </p>
-                        <div className="mt-3 flex items-center gap-1 text-muted-foreground text-sm font-medium">
-                          Coming Soon
+                        <div className="mt-3 flex items-center gap-1 text-primary text-sm font-medium">
+                          Explore
+                          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                         </div>
                       </CardContent>
                     </Card>
-                  </div>
+                  </Link>
                 );
-              }
-              
-              return (
-                <Link
-                  key={category.id}
-                  to={`/categories/${category.slug}`}
-                  className="group"
-                >
-                  <Card
-                    variant="interactive"
-                    className="overflow-hidden animate-slide-up"
-                    style={{ animationDelay: `${i * 0.1}s` }}
-                  >
-                    <div className="aspect-[4/3] bg-gradient-to-br from-primary/10 to-accent/10 relative overflow-hidden flex items-center justify-center">
-                      {category.image && category.image !== "/placeholder.svg" ? (
-                        <img 
-                          src={category.image} 
-                          alt={category.name}
-                          className="max-w-full max-h-full object-contain p-2 group-hover:scale-105 transition-transform duration-300"
-                        />
-                      ) : (
-                        <PackageIcon className="h-16 w-16 text-primary/40" />
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
-                      <div className="absolute bottom-4 left-4 right-4">
-                        <h3 className="font-display font-semibold text-lg">{category.name}</h3>
-                      </div>
-                    </div>
-                    <CardContent className="p-4">
-                      <p className="text-sm text-muted-foreground line-clamp-2">
-                        {category.description}
-                      </p>
-                      <div className="mt-3 flex items-center gap-1 text-primary text-sm font-medium">
-                        Explore
-                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              );
-            })}
-          </div>
+              })}
+            </div>
+          )}
         </div>
       </section>
 
@@ -241,7 +253,7 @@ const Index = () => {
               Ready to Start Shopping?
             </h2>
             <p className="mt-4 text-primary-foreground/80 text-lg">
-              Create an account today and enjoy exclusive benefits, easy order tracking, 
+              Create an account today and enjoy exclusive benefits, easy order tracking,
               and flexible payment options.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">

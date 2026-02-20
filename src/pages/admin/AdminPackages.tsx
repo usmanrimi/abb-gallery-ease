@@ -9,8 +9,9 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { useAdminPackages, getCategoryName, Package, PackageClass } from "@/hooks/usePackages";
-import { formatPrice, categories } from "@/data/categories";
+import { useAdminPackages, Package, PackageClass } from "@/hooks/usePackages";
+import { useCategories } from "@/hooks/useCategories";
+import { formatPrice } from "@/data/categories";
 import { Package as PackageIcon, ImageIcon, Plus, Pencil, Trash2, Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { ImageUpload } from "@/components/admin/ImageUpload";
@@ -41,15 +42,23 @@ const kayanSallahSeedData = [
 ];
 
 export default function AdminPackages() {
-  const { packages, loading, addPackage, updatePackage, deletePackage, toggleVisibility } = useAdminPackages();
+  const { packages, loading: packagesLoading, addPackage, updatePackage, deletePackage, toggleVisibility } = useAdminPackages();
+  const { categories, loading: categoriesLoading } = useCategories();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSeeding, setIsSeeding] = useState(false);
 
+  const loading = packagesLoading || categoriesLoading;
+
+  const getCategoryName = (categoryId: string) => {
+    const category = categories.find(c => c.id === categoryId);
+    return category?.name || "Unknown";
+  };
+
   const handleSeedKayanSallah = async () => {
     if (!confirm("This will add all Kayan Sallah packages with VIP, SPECIAL, and STANDARD classes. Continue?")) return;
-    
+
     setIsSeeding(true);
     try {
       for (const pkg of kayanSallahSeedData) {
@@ -97,7 +106,7 @@ export default function AdminPackages() {
 
   const resetForm = () => {
     setFormData({
-      category_id: "1",
+      category_id: categories[0]?.id || "1",
       name: "",
       description: "",
       image_url: "",
@@ -130,10 +139,10 @@ export default function AdminPackages() {
         price: c.price.toString(),
         description: c.description,
       })) || [
-        { name: "VIP", price: "", description: "Premium quality with luxury items" },
-        { name: "SPECIAL", price: "", description: "High quality with selected items" },
-        { name: "STANDARD", price: "", description: "Quality items for the family" },
-      ],
+          { name: "VIP", price: "", description: "Premium quality with luxury items" },
+          { name: "SPECIAL", price: "", description: "High quality with selected items" },
+          { name: "STANDARD", price: "", description: "Quality items for the family" },
+        ],
     });
     setIsAddDialogOpen(true);
   };
