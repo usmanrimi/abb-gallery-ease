@@ -19,7 +19,7 @@ DO $$ BEGIN
   ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;
 END $$;
 
--- 2. Categories Table
+-- 2a. Categories Table
 CREATE TABLE IF NOT EXISTS public.categories (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
@@ -42,7 +42,7 @@ DO $$ BEGIN
     END IF;
 END $$;
 
--- 2. Global Settings Table
+-- 2b. Global Settings Table
 CREATE TABLE IF NOT EXISTS public.global_settings (
     id TEXT PRIMARY KEY DEFAULT 'current',
     -- Branding
@@ -71,6 +71,26 @@ CREATE TABLE IF NOT EXISTS public.global_settings (
 INSERT INTO public.global_settings (id) 
 VALUES ('current') 
 ON CONFLICT (id) DO NOTHING;
+
+-- 2c. packages (REFINED for Phase 3)
+CREATE TABLE IF NOT EXISTS public.packages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  category_id UUID NOT NULL REFERENCES public.categories(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  description TEXT DEFAULT '',
+  image_cover_url TEXT,
+  image_detail_url TEXT,
+  price_vip NUMERIC,
+  price_special NUMERIC,
+  price_standard NUMERIC,
+  starting_from NUMERIC,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Enable RLS
+ALTER TABLE public.packages ENABLE ROW LEVEL SECURITY;
 
 -- 3. Audit Log Enhancements (Ensuring columns exist)
 DO $$ BEGIN
@@ -137,10 +157,10 @@ CREATE POLICY "Super admin manage categories" ON public.categories FOR ALL USING
 CREATE POLICY "Staff read categories" ON public.categories FOR SELECT USING (public.get_my_role() IN ('admin_ops', 'super_admin'));
 CREATE POLICY "Staff update categories" ON public.categories FOR UPDATE USING (public.get_my_role() IN ('admin_ops', 'super_admin'));
 
-CREATE POLICY "Public read content" ON public.packages FOR SELECT USING (true);
-CREATE POLICY "Public read content classes" ON public.package_classes FOR SELECT USING (true);
-CREATE POLICY "Super admin manage content" ON public.packages FOR ALL USING (public.get_my_role() = 'super_admin');
-CREATE POLICY "Super admin manage classes" ON public.package_classes FOR ALL USING (public.get_my_role() = 'super_admin');
+CREATE POLICY "Public read active packages" ON public.packages FOR SELECT USING (is_active = true);
+CREATE POLICY "Staff read all packages" ON public.packages FOR SELECT USING (public.get_my_role() IN ('admin_ops', 'super_admin'));
+CREATE POLICY "Staff manage packages" ON public.packages FOR ALL USING (public.get_my_role() IN ('admin_ops', 'super_admin'));
+CREATE POLICY "Super admin manage packages" ON public.packages FOR ALL USING (public.get_my_role() = 'super_admin');
 
 -- ORDERS (Admin Ops handles daily, Super Admin observes)
 CREATE POLICY "Customers own orders" ON public.orders FOR SELECT USING (auth.uid() = user_id);

@@ -42,8 +42,8 @@ export default function PackageDetail() {
 
       setLoading(true);
       try {
-        const { data: dbPackage, error } = await supabase
-          .from("packages")
+        const { data: dbPackage, error } = await (supabase
+          .from("packages") as any)
           .select("*")
           .eq("id", id)
           .single();
@@ -55,29 +55,46 @@ export default function PackageDetail() {
           return;
         }
 
-        // Fetch classes
-        const { data: classesData } = await supabase
-          .from("package_classes")
-          .select("*")
-          .eq("package_id", id)
-          .order("sort_order", { ascending: true });
+        // Create classes from tier columns
+        const dynamicClasses: PackageClass[] = [];
+        if (dbPackage.price_vip) {
+          dynamicClasses.push({
+            id: "vip",
+            name: "VIP",
+            price: Number(dbPackage.price_vip),
+            description: "Premium quality with luxury items and exclusive service.",
+            sort_order: 1
+          });
+        }
+        if (dbPackage.price_special) {
+          dynamicClasses.push({
+            id: "special",
+            name: "Special",
+            price: Number(dbPackage.price_special),
+            description: "High quality selection with carefully curated items.",
+            sort_order: 2
+          });
+        }
+        if (dbPackage.price_standard) {
+          dynamicClasses.push({
+            id: "standard",
+            name: "Standard",
+            price: Number(dbPackage.price_standard),
+            description: "Quality items suitable for everyday celebrations.",
+            sort_order: 3
+          });
+        }
 
         const packageWithClasses: Package = {
           ...dbPackage,
-          classes: classesData?.map(c => ({
-            id: c.id,
-            name: c.name,
-            price: Number(c.price),
-            description: c.description || "",
-            sort_order: c.sort_order,
-          })) || [],
+          classes: dynamicClasses,
         };
 
         setPkg(packageWithClasses);
 
         // Set default selected class
-        if (packageWithClasses.has_classes && packageWithClasses.classes && packageWithClasses.classes.length > 0) {
-          setSelectedClass(packageWithClasses.classes[0].id);
+        if (dynamicClasses.length > 0) {
+          setSelectedClass(dynamicClasses[0].id);
         }
       } catch (err) {
         console.error("Error:", err);
@@ -116,12 +133,10 @@ export default function PackageDetail() {
   const isCustomSelected = selectedClass === "custom";
   const selectedClassData = pkg.classes?.find((c) => c.id === selectedClass);
 
-  // For custom, use starting price as base; otherwise use class price or base price
+  // For custom, use starting price as base; otherwise use class price
   const unitPrice = isCustomSelected
-    ? (pkg.starting_price || 0)
-    : pkg.has_classes
-      ? (selectedClassData?.price || pkg.starting_price || 0)
-      : (pkg.base_price || 0);
+    ? (pkg.starting_from || 0)
+    : (selectedClassData?.price || pkg.starting_from || 0);
 
   // Handle direct checkout for class orders
   const handleCheckout = () => {
@@ -203,11 +218,12 @@ export default function PackageDetail() {
       categoryId: pkg.category_id,
       name: pkg.name,
       description: pkg.description || "",
-      image: pkg.image_url || "/placeholder.svg",
-      classImage: pkg.class_image_url || undefined,
-      hasClasses: pkg.has_classes,
-      basePrice: pkg.base_price || undefined,
-      startingPrice: pkg.starting_price || undefined,
+      image: pkg.image_cover_url || "/placeholder.svg",
+      classImage: pkg.image_detail_url || undefined,
+      startingPrice: pkg.starting_from || undefined,
+      price_vip: pkg.price_vip,
+      price_special: pkg.price_special,
+      price_standard: pkg.price_standard,
       classes: pkg.classes?.map(c => ({
         id: c.id,
         name: c.name,
@@ -217,10 +233,10 @@ export default function PackageDetail() {
     };
 
     addToCart({
-      package: cartPackage,
+      package: cartPackage as any,
       selectedClass: isCustomSelected
         ? { id: "custom", name: "Custom", price: unitPrice, description: "Custom request" }
-        : pkg.has_classes ? selectedClassData : undefined,
+        : selectedClassData,
       quantity,
       notes,
       unitPrice,
@@ -229,8 +245,8 @@ export default function PackageDetail() {
     toast.success(`${pkg.name} added to cart!`);
   };
 
-  // Determine which image to show in the class section - use classImage if available
-  const classDisplayImage = pkg.class_image_url || pkg.image_url;
+  // Determine which image to show in the class section
+  const classDisplayImage = pkg.image_detail_url || pkg.image_cover_url;
 
   return (
     <Layout>
@@ -249,16 +265,15 @@ export default function PackageDetail() {
         </nav>
 
         <div className="grid gap-8 lg:grid-cols-2">
-          {/* Class Section Image - This is the image shown on package detail page */}
+          {/* Class Section Image */}
           <div className="animate-fade-in">
-            {/* Image container - flexible height, maintains aspect ratio, never crops */}
-            <div className="w-full rounded-2xl bg-muted/30 relative overflow-hidden flex items-center justify-center p-4">
+            <div className="w-full rounded-2xl bg-muted/30 relative overflow-hidden flex items-center justify-center p-4 min-h-[400px]">
               {classDisplayImage && classDisplayImage !== "/placeholder.svg" ? (
                 <img
                   src={classDisplayImage}
                   alt={pkg.name}
-                  className="max-w-full h-auto object-contain rounded-lg"
-                  style={{ maxHeight: "80vh" }}
+                  className="max-w-full h-auto object-contain rounded-lg shadow-sm"
+                  style={{ maxHeight: "70vh" }}
                 />
               ) : (
                 <div className="aspect-square w-full flex items-center justify-center">
@@ -270,35 +285,32 @@ export default function PackageDetail() {
 
           {/* Product Details */}
           <div className="animate-slide-up">
-            <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary mb-4">
+            <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-sm font-bold text-primary mb-4 uppercase tracking-tighter">
               {category.name}
             </div>
 
-            <h1 className="text-3xl font-bold font-display md:text-4xl mb-4">
+            <h1 className="text-3xl font-black font-display md:text-5xl mb-4 tracking-tight">
               {pkg.name}
             </h1>
 
-            <p className="text-muted-foreground text-lg mb-2">
+            <p className="text-muted-foreground text-lg mb-6 leading-relaxed">
               {pkg.description}
             </p>
 
-            {/* Show price based on package type */}
-            {pkg.has_classes && pkg.starting_price ? (
-              <p className="text-xl font-semibold text-primary mb-6">
-                Starting from {formatPrice(pkg.starting_price)}
-              </p>
-            ) : pkg.base_price ? (
-              <p className="text-xl font-semibold text-primary mb-6">
-                {formatPrice(pkg.base_price)}
-              </p>
-            ) : null}
+            {/* Starting price display if applicable */}
+            {pkg.starting_from && (
+              <div className="mb-6 inline-block bg-primary/5 border border-primary/20 px-4 py-2 rounded-xl">
+                <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Starting from</p>
+                <p className="text-3xl font-black text-primary">{formatPrice(pkg.starting_from)}</p>
+              </div>
+            )}
 
-            <Card className="mb-6">
+            <Card className="mb-6 border-border/50 shadow-sm overflow-hidden">
               <CardContent className="p-6 space-y-6">
-                {/* Class Selection - Only for packages with classes */}
-                {pkg.has_classes && pkg.classes && pkg.classes.length > 0 && (
-                  <div className="space-y-3">
-                    <Label className="text-base font-semibold">Select Class</Label>
+                {/* Class Selection */}
+                {pkg.classes && pkg.classes.length > 0 && (
+                  <div className="space-y-4">
+                    <Label className="text-lg font-black uppercase tracking-tighter">Choose a Pricing Tier</Label>
                     <RadioGroup
                       value={selectedClass}
                       onValueChange={setSelectedClass}
@@ -309,25 +321,25 @@ export default function PackageDetail() {
                           key={cls.id}
                           htmlFor={cls.id}
                           className={cn(
-                            "flex items-start gap-3 rounded-xl border-2 p-4 cursor-pointer transition-all",
+                            "flex items-start gap-3 rounded-2xl border-2 p-5 cursor-pointer transition-all duration-200",
                             selectedClass === cls.id
-                              ? "border-primary bg-primary/5"
-                              : "border-border hover:border-primary/50"
+                              ? "border-primary bg-primary/5 shadow-md shadow-primary/10"
+                              : "border-border/50 hover:border-primary/30 bg-muted/20"
                           )}
                         >
                           <RadioGroupItem
                             value={cls.id}
                             id={cls.id}
-                            className="mt-0.5"
+                            className="mt-1"
                           />
                           <div className="flex-1">
                             <div className="flex items-center justify-between flex-wrap gap-2">
-                              <span className="font-semibold">{cls.name}</span>
-                              <span className="font-bold text-primary">
+                              <span className="text-lg font-black tracking-tight">{cls.name}</span>
+                              <span className="text-xl font-black text-primary">
                                 {formatPrice(cls.price)}
                               </span>
                             </div>
-                            <p className="text-sm text-muted-foreground mt-1">
+                            <p className="text-sm text-muted-foreground mt-1 font-medium italic">
                               {cls.description}
                             </p>
                           </div>
@@ -338,26 +350,26 @@ export default function PackageDetail() {
                       <Label
                         htmlFor="custom"
                         className={cn(
-                          "flex items-start gap-3 rounded-xl border-2 p-4 cursor-pointer transition-all",
+                          "flex items-start gap-3 rounded-2xl border-2 p-5 cursor-pointer transition-all duration-200",
                           selectedClass === "custom"
-                            ? "border-primary bg-primary/5"
-                            : "border-border hover:border-primary/50 border-dashed"
+                            ? "border-primary bg-primary/5 shadow-md shadow-primary/10"
+                            : "border-border/50 hover:border-primary/30 border-dashed bg-muted/10"
                         )}
                       >
                         <RadioGroupItem
                           value="custom"
                           id="custom"
-                          className="mt-0.5"
+                          className="mt-1"
                         />
                         <div className="flex-1">
                           <div className="flex items-center justify-between flex-wrap gap-2">
-                            <span className="font-semibold">Custom</span>
-                            <span className="text-sm text-muted-foreground">
-                              Price based on request
+                            <span className="text-lg font-black tracking-tight">Custom Order</span>
+                            <span className="text-sm font-bold text-muted-foreground uppercase tracking-tighter">
+                              Quotation
                             </span>
                           </div>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            Describe exactly what you want - we'll create a custom package for you
+                          <p className="text-sm text-muted-foreground mt-1 font-medium italic">
+                            Describe your specific needs and we'll provide a tailor-made quotation.
                           </p>
                         </div>
                       </Label>
@@ -365,52 +377,54 @@ export default function PackageDetail() {
 
                     {/* Custom Request Text Area */}
                     {isCustomSelected && (
-                      <div className="space-y-2 pt-2">
-                        <Label htmlFor="customRequest" className="text-sm font-medium text-primary">
-                          Describe what you want *
+                      <div className="space-y-3 pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                        <Label htmlFor="customRequest" className="text-sm font-bold text-primary uppercase tracking-widest">
+                          Describe your requirements
                         </Label>
                         <Textarea
                           id="customRequest"
-                          placeholder="Write your preferred items, budget, and any special request…"
+                          placeholder="Please list your preferred items, budget, and any special requests..."
                           value={customRequest}
                           onChange={(e) => setCustomRequest(e.target.value)}
                           rows={4}
-                          className="border-primary/30"
+                          className="border-primary/20 focus-visible:ring-primary shadow-sm"
                           required
                         />
-                        <p className="text-xs text-muted-foreground">
-                          Admin will review and send you the final price
+                        <p className="text-xs text-muted-foreground font-medium">
+                          Our team will review your request and contact you with a final price.
                         </p>
                       </div>
                     )}
                   </div>
                 )}
 
-                {/* Fixed Price Display for non-class packages */}
-                {!pkg.has_classes && pkg.base_price && (
-                  <div className="text-center p-4 rounded-xl bg-primary/5 border-2 border-primary">
-                    <p className="text-sm text-muted-foreground mb-1">Fixed Price</p>
-                    <p className="text-2xl font-bold text-primary">{formatPrice(pkg.base_price)}</p>
+                {/* Fixed Price Display if no classes */}
+                {(!pkg.classes || pkg.classes.length === 0) && pkg.price_standard && (
+                  <div className="text-center p-6 rounded-2xl bg-primary/5 border-2 border-primary/20">
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Standard Price</p>
+                    <p className="text-4xl font-black text-primary">{formatPrice(pkg.price_standard)}</p>
                   </div>
                 )}
 
                 {/* Quantity */}
-                <div className="space-y-3">
-                  <Label className="text-base font-semibold">Quantity</Label>
+                <div className="space-y-4 pt-2">
+                  <Label className="text-lg font-black uppercase tracking-tighter">Set Quantity</Label>
                   <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2 rounded-lg border">
+                    <div className="flex items-center gap-1 rounded-xl border-2 border-border/50 p-1 bg-background">
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="h-10 w-10 rounded-lg hover:bg-muted"
                         onClick={() => setQuantity(Math.max(1, quantity - 1))}
                         disabled={quantity <= 1}
                       >
                         <Minus className="h-4 w-4" />
                       </Button>
-                      <span className="w-12 text-center font-semibold">{quantity}</span>
+                      <span className="w-12 text-center text-lg font-black">{quantity}</span>
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="h-10 w-10 rounded-lg hover:bg-muted"
                         onClick={() => setQuantity(quantity + 1)}
                       >
                         <Plus className="h-4 w-4" />
@@ -420,61 +434,60 @@ export default function PackageDetail() {
                 </div>
 
                 {/* Notes */}
-                <div className="space-y-3">
-                  <Label htmlFor="notes" className="text-base font-semibold">
-                    Special Notes (Optional)
+                <div className="space-y-4 pt-2">
+                  <Label htmlFor="notes" className="text-lg font-black uppercase tracking-tighter">
+                    Special Instructions
                   </Label>
                   <Textarea
                     id="notes"
-                    placeholder="Any special requests or customizations..."
+                    placeholder="E.g. Gift wrapping, specific delivery timing, or preferences..."
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     rows={3}
+                    className="border-border/50 focus-visible:ring-primary"
                   />
                 </div>
               </CardContent>
             </Card>
 
-            {/* Actions - Different buttons based on selection */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 p-6 rounded-xl bg-muted/50">
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 p-6 rounded-2xl bg-muted/30 border border-border/50">
               {isCustomSelected ? (
-                // Custom flow: Show Calculate Cost button only
                 <Button
-                  size="lg"
-                  className="w-full sm:w-auto"
+                  size="xl"
+                  className="w-full sm:w-auto h-14 px-10 text-lg font-black uppercase tracking-tight shadow-lg shadow-primary/20"
                   onClick={handleCalculateCost}
                   disabled={!customRequest.trim() || isSubmittingCustom}
                 >
                   {isSubmittingCustom ? (
                     <>
-                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                      Submitting...
+                      <Loader2 className="h-6 w-6 mr-3 animate-spin" />
+                      Submitting Request...
                     </>
                   ) : (
                     <>
-                      <Calculator className="h-5 w-5 mr-2" />
-                      Calculate My Cost
+                      <Calculator className="h-6 w-6 mr-3" />
+                      Get My Quotation
                     </>
                   )}
                 </Button>
               ) : (
-                // Class flow: Show Checkout and Add to Cart buttons
                 <>
                   <Button
                     variant="outline"
-                    size="lg"
-                    className="w-full sm:w-auto"
+                    size="xl"
+                    className="w-full sm:w-auto h-14 px-8 text-lg font-black uppercase tracking-tight border-2 border-primary/20 hover:bg-primary/5"
                     onClick={handleAddToCart}
                   >
-                    <ShoppingCart className="h-5 w-5 mr-2" />
+                    <ShoppingCart className="h-6 w-6 mr-3" />
                     Add to Cart
                   </Button>
                   <Button
-                    size="lg"
-                    className="w-full sm:w-auto"
+                    size="xl"
+                    className="w-full sm:w-auto h-14 px-10 text-lg font-black uppercase tracking-tight shadow-lg shadow-primary/20"
                     onClick={handleCheckout}
                   >
-                    <CreditCard className="h-5 w-5 mr-2" />
+                    <CreditCard className="h-6 w-6 mr-3" />
                     Checkout - {formatPrice(unitPrice * quantity)}
                   </Button>
                 </>
@@ -482,15 +495,17 @@ export default function PackageDetail() {
             </div>
 
             {/* Features */}
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <div className="mt-8 grid gap-4 sm:grid-cols-2">
               {[
-                "Quality guaranteed",
-                "Flexible payment options",
-                "Free delivery available",
-                "Easy returns",
+                "100% Quality Guaranteed",
+                "Secure Payment with Paystack",
+                "Same Day Delivery Available",
+                "Pristine Packaging Included",
               ].map((feature) => (
-                <div key={feature} className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Check className="h-4 w-4 text-success" />
+                <div key={feature} className="flex items-center gap-3 text-sm font-bold text-muted-foreground/80">
+                  <div className="h-6 w-6 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <Check className="h-4 w-4 text-emerald-600" />
+                  </div>
                   {feature}
                 </div>
               ))}
@@ -499,7 +514,7 @@ export default function PackageDetail() {
         </div>
       </div>
 
-      {/* Payment Modal for class orders */}
+      {/* Payment Modal */}
       {selectedClassData && (
         <PaymentModal
           open={isPaymentModalOpen}
@@ -509,10 +524,11 @@ export default function PackageDetail() {
             categoryId: pkg.category_id,
             name: pkg.name,
             description: pkg.description || "",
-            image: pkg.image_url || "/placeholder.svg",
-            hasClasses: pkg.has_classes,
-            basePrice: pkg.base_price || undefined,
-            startingPrice: pkg.starting_price || undefined,
+            image: pkg.image_cover_url || "/placeholder.svg",
+            price_vip: pkg.price_vip,
+            price_special: pkg.price_special,
+            price_standard: pkg.price_standard,
+            starting_from: pkg.starting_from,
           }}
           selectedClass={selectedClassData}
           quantity={quantity}

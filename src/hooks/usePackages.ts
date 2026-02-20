@@ -14,12 +14,13 @@ export interface Package {
   category_id: string;
   name: string;
   description: string;
-  image_url: string | null;
-  class_image_url: string | null;
-  has_classes: boolean;
-  base_price: number | null;
-  starting_price: number | null;
-  is_hidden: boolean;
+  image_cover_url: string | null;
+  image_detail_url: string | null;
+  price_vip: number | null;
+  price_special: number | null;
+  price_standard: number | null;
+  starting_from: number | null;
+  is_active: boolean;
   classes?: PackageClass[];
 }
 
@@ -39,7 +40,7 @@ export function usePackages(categoryId?: string) {
       let query = (supabase
         .from("packages") as any)
         .select("*")
-        .eq("is_hidden", false);
+        .eq("is_active", true);
 
       if (categoryId) {
         query = query.eq("category_id", categoryId);
@@ -56,24 +57,41 @@ export function usePackages(categoryId?: string) {
       }
 
       if (dbPackages && dbPackages.length > 0) {
-        // Fetch classes for each package
-        const packageIds = dbPackages.map(p => p.id);
-        const { data: classesData } = await (supabase
-          .from("package_classes") as any)
-          .select("*")
-          .in("package_id", packageIds)
-          .order("sort_order", { ascending: true });
+        const packagesWithClasses = (dbPackages as any[]).map(pkg => {
+          const dynamicClasses: PackageClass[] = [];
+          if (pkg.price_vip) {
+            dynamicClasses.push({
+              id: "vip",
+              name: "VIP",
+              price: Number(pkg.price_vip),
+              description: "Premium quality with luxury items and exclusive service.",
+              sort_order: 1
+            });
+          }
+          if (pkg.price_special) {
+            dynamicClasses.push({
+              id: "special",
+              name: "Special",
+              price: Number(pkg.price_special),
+              description: "High quality selection with carefully curated items.",
+              sort_order: 2
+            });
+          }
+          if (pkg.price_standard) {
+            dynamicClasses.push({
+              id: "standard",
+              name: "Standard",
+              price: Number(pkg.price_standard),
+              description: "Quality items suitable for everyday celebrations.",
+              sort_order: 3
+            });
+          }
 
-        const packagesWithClasses = (dbPackages as any[]).map(pkg => ({
-          ...pkg,
-          classes: classesData?.filter((c: any) => c.package_id === pkg.id).map((c: any) => ({
-            id: c.id,
-            name: c.name,
-            price: Number(c.price),
-            description: c.description || "",
-            sort_order: c.sort_order,
-          })) || [],
-        }));
+          return {
+            ...pkg,
+            classes: dynamicClasses,
+          };
+        });
 
         setPackages(packagesWithClasses as Package[]);
       } else {
@@ -106,8 +124,7 @@ export function useAdminPackages() {
       const { data: dbPackages, error: dbError } = await (supabase
         .from("packages") as any)
         .select("*")
-        .order("category_id", { ascending: true })
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: false });
 
       if (dbError) {
         console.error("DB error:", dbError);
@@ -118,23 +135,41 @@ export function useAdminPackages() {
       }
 
       if (dbPackages && dbPackages.length > 0) {
-        const packageIds = dbPackages.map(p => p.id);
-        const { data: classesData } = await (supabase
-          .from("package_classes") as any)
-          .select("*")
-          .in("package_id", packageIds)
-          .order("sort_order", { ascending: true });
+        const packagesWithClasses = (dbPackages as any[]).map(pkg => {
+          const dynamicClasses: PackageClass[] = [];
+          if (pkg.price_vip) {
+            dynamicClasses.push({
+              id: "vip",
+              name: "VIP",
+              price: Number(pkg.price_vip),
+              description: "Premium quality with luxury items and exclusive service.",
+              sort_order: 1
+            });
+          }
+          if (pkg.price_special) {
+            dynamicClasses.push({
+              id: "special",
+              name: "Special",
+              price: Number(pkg.price_special),
+              description: "High quality selection with carefully curated items.",
+              sort_order: 2
+            });
+          }
+          if (pkg.price_standard) {
+            dynamicClasses.push({
+              id: "standard",
+              name: "Standard",
+              price: Number(pkg.price_standard),
+              description: "Quality items suitable for everyday celebrations.",
+              sort_order: 3
+            });
+          }
 
-        const packagesWithClasses = (dbPackages as any[]).map(pkg => ({
-          ...pkg,
-          classes: classesData?.filter((c: any) => c.package_id === pkg.id).map((c: any) => ({
-            id: c.id,
-            name: c.name,
-            price: Number(c.price),
-            description: c.description || "",
-            sort_order: c.sort_order,
-          })) || [],
-        }));
+          return {
+            ...pkg,
+            classes: dynamicClasses,
+          };
+        });
 
         setPackages(packagesWithClasses as Package[]);
       } else {
@@ -174,77 +209,49 @@ export function useAdminPackages() {
     }
   };
 
-  const addPackage = async (pkg: Omit<Package, "id" | "is_hidden" | "classes"> & { classes?: Omit<PackageClass, "id">[] }) => {
+  const addPackage = async (pkg: Omit<Package, "id" | "is_active" | "classes">) => {
     const { data, error } = await (supabase
       .from("packages") as any)
       .insert({
         category_id: pkg.category_id,
         name: pkg.name,
         description: pkg.description,
-        image_url: pkg.image_url,
-        class_image_url: pkg.class_image_url,
-        has_classes: pkg.has_classes,
-        base_price: pkg.base_price,
-        starting_price: pkg.starting_price,
+        image_cover_url: pkg.image_cover_url,
+        image_detail_url: pkg.image_detail_url,
+        price_vip: pkg.price_vip,
+        price_special: pkg.price_special,
+        price_standard: pkg.price_standard,
+        starting_from: pkg.starting_from,
+        is_active: true
       })
       .select()
       .single();
 
     if (error) throw error;
 
-    if (pkg.classes && pkg.classes.length > 0 && data) {
-      const classesToInsert = pkg.classes.map((c, index) => ({
-        package_id: data.id,
-        name: c.name,
-        price: c.price,
-        description: c.description,
-        sort_order: index,
-      }));
-
-      await (supabase.from("package_classes") as any).insert(classesToInsert);
-    }
-
     await logAuditAction("create_package", data?.id || "", `Created package: ${pkg.name}`);
     await fetchPackages();
     return data;
   };
 
-  const updatePackage = async (id: string, updates: Partial<Omit<Package, "classes">> & { classes?: Omit<PackageClass, "id">[] }) => {
+  const updatePackage = async (id: string, updates: Partial<Omit<Package, "classes">>) => {
     const { error } = await (supabase
       .from("packages") as any)
       .update({
         name: updates.name,
         description: updates.description,
         category_id: updates.category_id,
-        image_url: updates.image_url,
-        class_image_url: updates.class_image_url,
-        has_classes: updates.has_classes,
-        base_price: updates.base_price,
-        starting_price: updates.starting_price,
-        is_hidden: updates.is_hidden,
+        image_cover_url: updates.image_cover_url,
+        image_detail_url: updates.image_detail_url,
+        price_vip: updates.price_vip,
+        price_special: updates.price_special,
+        price_standard: updates.price_standard,
+        starting_from: updates.starting_from,
+        is_active: updates.is_active,
       })
       .eq("id", id);
 
     if (error) throw error;
-
-    if (updates.classes !== undefined) {
-      await (supabase
-        .from("package_classes") as any)
-        .delete()
-        .eq("package_id", id);
-
-      if (updates.classes.length > 0) {
-        const classesToInsert = updates.classes.map((c, index) => ({
-          package_id: id,
-          name: c.name,
-          price: c.price,
-          description: c.description,
-          sort_order: index,
-        }));
-
-        await (supabase.from("package_classes") as any).insert(classesToInsert);
-      }
-    }
 
     await logAuditAction("edit_package", id, `Updated package: ${updates.name || id}`);
     await fetchPackages();
@@ -262,18 +269,18 @@ export function useAdminPackages() {
     await fetchPackages();
   };
 
-  const toggleVisibility = async (id: string, isHidden: boolean) => {
+  const toggleVisibility = async (id: string, isActive: boolean) => {
     const pkg = packages.find(p => p.id === id);
     const { error } = await (supabase
       .from("packages") as any)
-      .update({ is_hidden: isHidden })
+      .update({ is_active: isActive })
       .eq("id", id);
 
     if (error) throw error;
     await logAuditAction(
-      isHidden ? "hide_package" : "show_package",
+      isActive ? "show_package" : "hide_package",
       id,
-      `${isHidden ? "Hidden" : "Shown"} package: ${pkg?.name || id}`
+      `${isActive ? "Shown" : "Hidden"} package: ${pkg?.name || id}`
     );
     await fetchPackages();
   };

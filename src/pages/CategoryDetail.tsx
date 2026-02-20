@@ -89,22 +89,22 @@ export default function CategoryDetail() {
                   style={{ animationDelay: `${i * 0.1}s` }}
                 >
                   <div className="aspect-[4/3] bg-muted/30 relative overflow-hidden flex items-center justify-center p-2">
-                    {pkg.image_url && pkg.image_url !== "/placeholder.svg" ? (
+                    {pkg.image_cover_url && pkg.image_cover_url !== "/placeholder.svg" ? (
                       <img
-                        src={pkg.image_url}
+                        src={pkg.image_cover_url}
                         alt={pkg.name}
                         className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300"
                       />
                     ) : (
                       <PackageIcon className="h-16 w-16 text-primary/30" />
                     )}
-                    {pkg.has_classes && pkg.classes && pkg.classes.length > 0 && (
-                      <div className="absolute top-3 right-3">
-                        <span className="inline-flex items-center rounded-full bg-accent text-accent-foreground px-3 py-1 text-xs font-medium">
-                          {pkg.classes.length} classes
+                    <div className="absolute top-3 right-3 flex flex-col gap-1">
+                      {pkg.price_vip && (
+                        <span className="inline-flex items-center rounded-full bg-primary/10 backdrop-blur-sm text-primary px-2 py-0.5 text-[10px] font-bold uppercase border border-primary/20 shadow-sm">
+                          VIP Available
                         </span>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                   <CardContent className="p-5">
                     <h3 className="font-display font-semibold text-lg mb-2">{pkg.name}</h3>
@@ -113,20 +113,23 @@ export default function CategoryDetail() {
                     </p>
                     <div className="flex items-center justify-between">
                       <div>
-                        {pkg.starting_price ? (
-                          <span className="text-sm text-muted-foreground">
-                            Starting from{" "}
-                            <span className="text-lg font-semibold text-foreground">
-                              {formatPrice(pkg.starting_price)}
+                        {pkg.starting_from ? (
+                          <div className="flex flex-col">
+                            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Starts from</span>
+                            <span className="text-lg font-black text-primary">
+                              {formatPrice(pkg.starting_from)}
                             </span>
-                          </span>
-                        ) : pkg.base_price ? (
-                          <span className="text-lg font-semibold">
-                            {formatPrice(pkg.base_price)}
-                          </span>
+                          </div>
+                        ) : pkg.price_standard ? (
+                          <div className="flex flex-col">
+                            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Standard</span>
+                            <span className="text-lg font-black text-primary">
+                              {formatPrice(pkg.price_standard)}
+                            </span>
+                          </div>
                         ) : null}
                       </div>
-                      <div className="flex items-center gap-1 text-primary text-sm font-medium">
+                      <div className="flex items-center gap-1 text-primary text-sm font-bold uppercase tracking-tighter">
                         View
                         <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                       </div>

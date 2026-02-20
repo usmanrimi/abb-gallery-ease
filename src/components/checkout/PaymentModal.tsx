@@ -24,9 +24,13 @@ interface PackageData {
   name: string;
   description: string;
   image: string;
-  hasClasses: boolean;
+  hasClasses?: boolean;
   basePrice?: number;
   startingPrice?: number;
+  price_vip?: number | null;
+  price_special?: number | null;
+  price_standard?: number | null;
+  starting_from?: number | null;
 }
 
 interface ClassData {

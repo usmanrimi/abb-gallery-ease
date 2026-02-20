@@ -47,10 +47,10 @@ export default function SuperAdminPackages() {
         }
     };
 
-    const handleToggle = async (id: string, isHidden: boolean) => {
+    const handleToggle = async (id: string, isActive: boolean) => {
         try {
-            await toggleVisibility(id, !isHidden);
-            toast.success(isHidden ? "Package is now visible" : "Package hidden");
+            await toggleVisibility(id, !isActive);
+            toast.success(!isActive ? "Package is now visible" : "Package hidden");
         } catch (err: any) {
             toast.error(err.message || "Failed to toggle visibility");
         }
@@ -103,7 +103,7 @@ export default function SuperAdminPackages() {
                 ) : (
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {filteredPackages.map((pkg) => (
-                            <Card key={pkg.id} className={pkg.is_hidden ? "opacity-60" : ""}>
+                            <Card key={pkg.id} className={!pkg.is_active ? "opacity-60" : ""}>
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-lg flex items-center justify-between">
                                         <span className="truncate">{pkg.name}</span>
@@ -112,22 +112,26 @@ export default function SuperAdminPackages() {
                                 </CardHeader>
                                 <CardContent className="space-y-3">
                                     <p className="text-sm text-muted-foreground line-clamp-2">{pkg.description}</p>
-                                    {pkg.has_classes && pkg.classes && pkg.classes.length > 0 ? (
-                                        <div className="text-sm">
-                                            <span className="text-muted-foreground">Classes: </span>
-                                            {pkg.classes.map((c) => (
-                                                <Badge key={c.id} variant="secondary" className="mr-1 mb-1">
-                                                    {c.name}: {formatPrice(c.price)}
-                                                </Badge>
-                                            ))}
+
+                                    <div className="grid grid-cols-3 gap-1 py-1 border-y border-border/40 text-[10px]">
+                                        <div className="text-center">
+                                            <span className="block text-muted-foreground font-bold">VIP</span>
+                                            <span className="font-black text-primary">{pkg.price_vip ? formatPrice(pkg.price_vip) : "—"}</span>
                                         </div>
-                                    ) : pkg.base_price ? (
-                                        <p className="text-sm font-medium text-primary">{formatPrice(pkg.base_price)}</p>
-                                    ) : null}
+                                        <div className="text-center border-x border-border/40">
+                                            <span className="block text-muted-foreground font-bold">SPEC</span>
+                                            <span className="font-black text-primary">{pkg.price_special ? formatPrice(pkg.price_special) : "—"}</span>
+                                        </div>
+                                        <div className="text-center">
+                                            <span className="block text-muted-foreground font-bold">STD</span>
+                                            <span className="font-black text-primary">{pkg.price_standard ? formatPrice(pkg.price_standard) : "—"}</span>
+                                        </div>
+                                    </div>
+
                                     <div className="flex items-center gap-2 pt-2 border-t">
-                                        <Button variant="ghost" size="sm" onClick={() => handleToggle(pkg.id, pkg.is_hidden)}>
-                                            {pkg.is_hidden ? <Eye className="h-4 w-4 mr-1" /> : <EyeOff className="h-4 w-4 mr-1" />}
-                                            {pkg.is_hidden ? "Show" : "Hide"}
+                                        <Button variant="ghost" size="sm" onClick={() => handleToggle(pkg.id, pkg.is_active)}>
+                                            {pkg.is_active ? <EyeOff className="h-4 w-4 mr-1" /> : <Eye className="h-4 w-4 mr-1" />}
+                                            {pkg.is_active ? "Hide" : "Show"}
                                         </Button>
                                         <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDelete(pkg.id)}>
                                             <Trash2 className="h-4 w-4 mr-1" /> Delete
