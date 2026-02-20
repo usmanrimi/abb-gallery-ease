@@ -19,8 +19,8 @@ export function useCategories() {
     const fetchCategories = async () => {
         setLoading(true);
         try {
-            const { data, error: dbError } = await (supabase
-                .from("categories") as any)
+            const { data, error: dbError } = await (supabase as any)
+                .from("categories")
                 .select("*")
                 .order("created_at", { ascending: true });
 
@@ -29,7 +29,6 @@ export function useCategories() {
         } catch (err: any) {
             console.error("Error fetching categories:", err);
             setError(err);
-            toast.error(err.message || "Failed to load categories");
         } finally {
             setLoading(false);
         }
@@ -41,48 +40,50 @@ export function useCategories() {
 
     const addCategory = async (category: Omit<Category, "id">) => {
         try {
-            const { data, error } = await (supabase
-                .from("categories") as any)
+            const { data, error } = await (supabase as any)
+                .from("categories")
                 .insert(category)
                 .select()
                 .single();
 
             if (error) throw error;
             await fetchCategories();
-            return data;
+            return { success: true, data };
         } catch (err: any) {
-            toast.error(err.message || "Failed to add category");
-            throw err;
+            console.error("Error adding category:", err);
+            return { success: false, error: err };
         }
     };
 
     const updateCategory = async (id: string, updates: Partial<Category>) => {
         try {
-            const { error } = await (supabase
-                .from("categories") as any)
+            const { error } = await (supabase as any)
+                .from("categories")
                 .update(updates)
                 .eq("id", id);
 
             if (error) throw error;
             await fetchCategories();
+            return { success: true };
         } catch (err: any) {
-            toast.error(err.message || "Failed to update category");
-            throw err;
+            console.error("Error updating category:", err);
+            return { success: false, error: err };
         }
     };
 
     const deleteCategory = async (id: string) => {
         try {
-            const { error } = await (supabase
-                .from("categories") as any)
+            const { error } = await (supabase as any)
+                .from("categories")
                 .delete()
                 .eq("id", id);
 
             if (error) throw error;
             await fetchCategories();
+            return { success: true };
         } catch (err: any) {
-            toast.error(err.message || "Failed to delete category");
-            throw err;
+            console.error("Error deleting category:", err);
+            return { success: false, error: err };
         }
     };
 
