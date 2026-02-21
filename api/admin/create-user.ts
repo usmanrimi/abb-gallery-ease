@@ -16,12 +16,18 @@ export default async function handler(req: any, res: any) {
         return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !supabaseServiceKey) {
-        console.error('Missing Supabase environment variables');
-        return res.status(500).json({ error: 'Server configuration error' });
+        console.error('Missing Supabase environment variables:', {
+            url: !!supabaseUrl,
+            key: !!supabaseServiceKey
+        });
+        return res.status(500).json({
+            error: 'Server configuration error',
+            details: `Missing: ${!supabaseUrl ? 'SUPABASE_URL ' : ''}${!supabaseServiceKey ? 'SUPABASE_SERVICE_ROLE_KEY' : ''}`.trim()
+        });
     }
 
     // Create a Supabase client with the service role key
