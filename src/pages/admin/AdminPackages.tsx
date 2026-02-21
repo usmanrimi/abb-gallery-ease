@@ -2,19 +2,14 @@ import { useState } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { useAdminPackages, Package, PackageClass } from "@/hooks/usePackages";
+import { useAdminPackages, Package } from "@/hooks/usePackages";
 import { useCategories } from "@/hooks/useCategories";
 import { formatPrice } from "@/data/categories";
 import { Package as PackageIcon, ImageIcon, Plus, Pencil, Trash2, Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { ImageUpload } from "@/components/admin/ImageUpload";
+import { PackageEditor } from "@/components/admin/PackageEditor";
 
 // Seed data for Kayan Sallah packages
 const kayanSallahSeedData = [
@@ -46,7 +41,6 @@ export default function AdminPackages() {
   const { categories, loading: categoriesLoading } = useCategories();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSeeding, setIsSeeding] = useState(false);
 
   const loading = packagesLoading || categoriesLoading;
@@ -72,7 +66,6 @@ export default function AdminPackages() {
           price_special: 200000,
           price_standard: 50000,
           starting_from: pkg.starting_price,
-          is_active: true
         });
       }
       toast.success("All Kayan Sallah packages have been added!");
@@ -84,63 +77,17 @@ export default function AdminPackages() {
     }
   };
 
-  // Form state
-  const [formData, setFormData] = useState({
-    category_id: "",
-    name: "",
-    description: "",
-    image_cover_url: "",
-    image_detail_url: "",
-    price_vip: "",
-    price_special: "",
-    price_standard: "",
-    starting_from: "",
-  });
-
   const handleOpenAdd = () => {
-    setFormData({
-      category_id: categories.length > 0 ? categories[0].id : "",
-      name: "",
-      description: "",
-      image_cover_url: "",
-      image_detail_url: "",
-      price_vip: "",
-      price_special: "",
-      price_standard: "",
-      starting_from: "",
-    });
     setEditingPackage(null);
     setIsAddDialogOpen(true);
   };
 
   const handleOpenEdit = (pkg: Package) => {
     setEditingPackage(pkg);
-    setFormData({
-      category_id: pkg.category_id,
-      name: pkg.name,
-      description: pkg.description || "",
-      image_cover_url: pkg.image_cover_url || "",
-      image_detail_url: pkg.image_detail_url || "",
-      price_vip: pkg.price_vip?.toString() || "",
-      price_special: pkg.price_special?.toString() || "",
-      price_standard: pkg.price_standard?.toString() || "",
-      starting_from: pkg.starting_from?.toString() || "",
-    });
     setIsAddDialogOpen(true);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
-    const submitData = {
-      ...formData,
-      price_vip: formData.price_vip ? Number(formData.price_vip) : null,
-      price_special: formData.price_special ? Number(formData.price_special) : null,
-      price_standard: formData.price_standard ? Number(formData.price_standard) : null,
-      starting_from: formData.starting_from ? Number(formData.starting_from) : null,
-    };
-
+  const handleSave = async (submitData: any) => {
     try {
       if (editingPackage) {
         await updatePackage(editingPackage.id, submitData);
@@ -153,8 +100,7 @@ export default function AdminPackages() {
     } catch (error: any) {
       console.error("Error saving package:", error);
       toast.error(error.message || "Failed to save package");
-    } finally {
-      setIsSubmitting(false);
+      throw error;
     }
   };
 
@@ -216,127 +162,16 @@ export default function AdminPackages() {
                 Add Package
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingPackage ? "Edit Package" : "Add New Package"}</DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid gap-4 py-4">
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Package Name</Label>
-                      <Input
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        placeholder="e.g. Alhaji Babba Package"
-                        className="h-9"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Category</Label>
-                      <Select
-                        value={formData.category_id}
-                        onValueChange={(value) => setFormData({ ...formData, category_id: value })}
-                      >
-                        <SelectTrigger className="h-9">
-                          <SelectValue placeholder="Select Category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.map((cat) => (
-                            <SelectItem key={cat.id} value={cat.id}>
-                              {cat.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Description</Label>
-                    <Textarea
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      placeholder="Enter package details..."
-                      rows={2}
-                      className="resize-none"
-                    />
-                  </div>
-
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <ImageUpload
-                      label="Cover Image"
-                      defaultValue={formData.image_cover_url}
-                      onUpload={(url) => setFormData({ ...formData, image_cover_url: url })}
-                      bucket="package-images"
-                    />
-                    <ImageUpload
-                      label="Detail Image"
-                      defaultValue={formData.image_detail_url}
-                      onUpload={(url) => setFormData({ ...formData, image_detail_url: url })}
-                      bucket="package-images"
-                    />
-                  </div>
-
-                  <div className="pt-2 border-t border-border/50">
-                    <h3 className="text-sm font-black uppercase tracking-tighter mb-4 text-primary">Class Section</h3>
-                    <div className="grid gap-4 sm:grid-cols-3">
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-bold uppercase tracking-wider">VIP Price</Label>
-                        <Input
-                          type="number"
-                          value={formData.price_vip}
-                          onChange={(e) => setFormData({ ...formData, price_vip: e.target.value })}
-                          placeholder="0"
-                          className="h-9 font-bold"
-                        />
-                      </div>
-                      <div className="space-y-1.5 border-x border-border/30 px-4">
-                        <Label className="text-xs font-bold uppercase tracking-wider text-primary">Special Price</Label>
-                        <Input
-                          type="number"
-                          value={formData.price_special}
-                          onChange={(e) => setFormData({ ...formData, price_special: e.target.value })}
-                          placeholder="0"
-                          className="h-9 font-bold border-primary/20"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-bold uppercase tracking-wider">Standard Price</Label>
-                        <Input
-                          type="number"
-                          value={formData.price_standard}
-                          onChange={(e) => setFormData({ ...formData, price_standard: e.target.value })}
-                          placeholder="0"
-                          className="h-9 font-bold"
-                        />
-                      </div>
-                    </div>
-                    <div className="mt-4 pt-3 border-t border-dashed border-border/50">
-                      <div className="space-y-1.5 max-w-[200px]">
-                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Manual Start Price</Label>
-                        <Input
-                          type="number"
-                          value={formData.starting_from}
-                          onChange={(e) => setFormData({ ...formData, starting_from: e.target.value })}
-                          placeholder="0"
-                          className="h-8 text-xs italic"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex justify-end gap-2 pt-4">
-                  <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                    {editingPackage ? "Save Changes" : "Create Package"}
-                  </Button>
-                </div>
-              </form>
+              <PackageEditor
+                categories={categories}
+                editingPackage={editingPackage}
+                onSave={handleSave}
+                onCancel={() => setIsAddDialogOpen(false)}
+              />
             </DialogContent>
           </Dialog>
         </div>
@@ -431,7 +266,7 @@ export default function AdminPackages() {
                             variant="outline"
                             size="sm"
                             className={`h-8 px-2 transition-colors ${pkg.is_active ? "hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200" : "hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200"}`}
-                            onClick={() => toggleVisibility(pkg.id, !pkg.is_active)}
+                            onClick={() => handleToggleVisibility(pkg)}
                           >
                             {pkg.is_active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                           </Button>
@@ -439,11 +274,7 @@ export default function AdminPackages() {
                             variant="destructive"
                             size="sm"
                             className="h-8 px-2 shadow-sm"
-                            onClick={() => {
-                              if (confirm("Are you sure you want to delete this package?")) {
-                                deletePackage(pkg.id);
-                              }
-                            }}
+                            onClick={() => handleDelete(pkg)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
