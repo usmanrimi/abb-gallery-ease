@@ -74,18 +74,24 @@ export default function SuperAdminManagement() {
     }
     setCreating(true);
     try {
-      const { data, error } = await supabase.functions.invoke("admin-management", {
-        body: {
-          action: "createUser",
+      const response = await fetch("/api/admin/create-user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
           email: newAdmin.email,
           password: newAdmin.password,
           fullName: newAdmin.fullName,
           role: newAdmin.role,
-        },
+        }),
       });
 
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to create admin");
+      }
 
       // Log the action Locally for the Super Admin
       await (supabase as any).from("audit_log").insert({
