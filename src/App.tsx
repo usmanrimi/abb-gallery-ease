@@ -45,6 +45,7 @@ import SuperAdminCategories from "./pages/superadmin/SuperAdminCategories";
 import SuperAdminPackages from "./pages/superadmin/SuperAdminPackages";
 import SuperAdminOrders from "./pages/superadmin/SuperAdminOrders";
 import SuperAdminDeliveries from "./pages/superadmin/SuperAdminDeliveries";
+import SuperAdminChat from "./pages/superadmin/SuperAdminChat";
 
 const queryClient = new QueryClient();
 
@@ -207,6 +208,11 @@ const App = () => (
               <Route path="/super-admin/deliveries" element={
                 <ProtectedRoute allowedRole="super_admin">
                   <SuperAdminDeliveries />
+                </ProtectedRoute>
+              } />
+              <Route path="/super-admin/chat" element={
+                <ProtectedRoute allowedRole="super_admin">
+                  <SuperAdminChat />
                 </ProtectedRoute>
               } />
 

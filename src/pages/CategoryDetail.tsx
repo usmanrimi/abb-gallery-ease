@@ -88,7 +88,7 @@ export default function CategoryDetail() {
                   className="overflow-hidden h-full animate-slide-up"
                   style={{ animationDelay: `${i * 0.1}s` }}
                 >
-                  <div className="aspect-[4/3] bg-muted/30 relative overflow-hidden flex items-center justify-center p-2">
+                  <div className="aspect-[4/3] bg-gradient-to-br from-primary/8 via-accent/5 to-primary/3 relative overflow-hidden flex items-center justify-center p-6 rounded-t-lg">
                     {pkg.image_cover_url && pkg.image_cover_url !== "/placeholder.svg" ? (
                       <img
                         src={pkg.image_cover_url}

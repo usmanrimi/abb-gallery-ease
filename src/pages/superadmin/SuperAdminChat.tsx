@@ -1,11 +1,20 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { AdminLayout } from "@/components/admin/AdminLayout";
+import { SuperAdminLayout } from "@/components/admin/SuperAdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Send, MessageCircle, Loader2, Image as ImageIcon, User, CheckCheck } from "lucide-react";
+import {
+    Send,
+    MessageCircle,
+    Loader2,
+    Image as ImageIcon,
+    User,
+    Shield,
+    Eye,
+    CheckCheck,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -28,9 +37,11 @@ interface Conversation {
     lastMessage: string;
     lastMessageTime: string;
     unreadCount: number;
+    assignedAdmin: string | null;
+    assignedAdminId: string | null;
 }
 
-export default function AdminChat() {
+export default function SuperAdminChat() {
     const { user } = useAuth();
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -67,37 +78,76 @@ export default function AdminChat() {
                 grouped.get(key)!.push(msg);
             });
 
-            // Get profiles for all user_ids
-            const userIds = Array.from(grouped.keys());
-            const { data: profiles } = await supabase
-                .from("profiles")
-                .select("id, full_name, email")
-                .in("id", userIds);
+            // Get all unique user_ids (customers + admins who sent)
+            const allUserIds = new Set<string>();
+            (allMessages || []).forEach((msg) => {
+                if (msg.user_id) allUserIds.add(msg.user_id);
+                if (msg.sender_id) allUserIds.add(msg.sender_id);
+            });
 
-            const profileMap = new Map<string, { full_name: string | null; email: string | null }>();
-            (profiles || []).forEach((p) => profileMap.set(p.id, { full_name: p.full_name, email: p.email }));
+            const { data: profiles } = await (supabase
+                .from("profiles") as any)
+                .select("id, full_name, email, role")
+                .in("id", Array.from(allUserIds));
 
-            const convos: Conversation[] = userIds
-                .filter(uid => {
-                    // Don't show conversations with admin users
-                    const profile = profileMap.get(uid);
-                    return profile !== undefined;
+            const profileMap = new Map<
+                string,
+                { full_name: string | null; email: string | null; role: string | null }
+            >();
+            (profiles || []).forEach((p: any) =>
+                profileMap.set(p.id, {
+                    full_name: p.full_name,
+                    email: p.email,
+                    role: p.role || null,
                 })
+            );
+
+            const customerUserIds = Array.from(grouped.keys()).filter((uid) => {
+                const profile = profileMap.get(uid);
+                // Show conversations from non-admin users (customers)
+                return (
+                    profile &&
+                    profile.role !== "admin_ops" &&
+                    profile.role !== "super_admin"
+                );
+            });
+
+            const convos: Conversation[] = customerUserIds
                 .map((uid) => {
                     const msgs = grouped.get(uid)!;
                     const latest = msgs[0];
-                    const unread = msgs.filter(m => !m.is_read && m.sender_role === "customer").length;
+                    const unread = msgs.filter(
+                        (m) => !m.is_read && m.sender_role === "customer"
+                    ).length;
                     const profile = profileMap.get(uid);
+
+                    // Find assigned admin (last admin who sent a message in this conversation)
+                    const lastAdminMsg = msgs.find((m) => m.sender_role === "admin");
+                    let assignedAdmin: string | null = null;
+                    let assignedAdminId: string | null = null;
+                    if (lastAdminMsg?.sender_id) {
+                        const adminProfile = profileMap.get(lastAdminMsg.sender_id);
+                        assignedAdmin = adminProfile?.full_name || adminProfile?.email || "Admin";
+                        assignedAdminId = lastAdminMsg.sender_id;
+                    }
+
                     return {
                         user_id: uid,
                         full_name: profile?.full_name || "Unknown User",
                         email: profile?.email || "",
-                        lastMessage: latest.message || (latest.image_url ? "📷 Image" : ""),
+                        lastMessage:
+                            latest.message || (latest.image_url ? "📷 Image" : ""),
                         lastMessageTime: latest.created_at,
                         unreadCount: unread,
+                        assignedAdmin,
+                        assignedAdminId,
                     };
                 })
-                .sort((a, b) => new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime());
+                .sort(
+                    (a, b) =>
+                        new Date(b.lastMessageTime).getTime() -
+                        new Date(a.lastMessageTime).getTime()
+                );
 
             setConversations(convos);
         } catch (error) {
@@ -122,8 +172,8 @@ export default function AdminChat() {
 
             // Mark unread messages as read
             const unreadIds = (data || [])
-                .filter(m => !m.is_read && m.sender_role === "customer")
-                .map(m => m.id);
+                .filter((m) => !m.is_read && m.sender_role === "customer")
+                .map((m) => m.id);
             if (unreadIds.length) {
                 await supabase
                     .from("chat_messages")
@@ -146,7 +196,7 @@ export default function AdminChat() {
     // Subscribe to realtime
     useEffect(() => {
         const channel = supabase
-            .channel("admin_chat_realtime")
+            .channel("superadmin_chat_realtime")
             .on(
                 "postgres_changes",
                 {
@@ -158,12 +208,12 @@ export default function AdminChat() {
                     const newMsg = payload.new as ChatMessage;
                     const currentSelectedId = selectedUserIdRef.current;
                     if (currentSelectedId && newMsg.user_id === currentSelectedId) {
-                        // Deduplicate: don't add if already exists
-                        setMessages(prev => {
-                            if (prev.some(m => m.id === newMsg.id)) return prev;
+                        setMessages((prev) => {
+                            // Deduplicate
+                            if (prev.some((m) => m.id === newMsg.id)) return prev;
                             return [...prev, newMsg];
                         });
-                        // Mark as read since admin has this convo open
+                        // Mark as read since super admin has this convo open
                         if (newMsg.sender_role === "customer") {
                             supabase
                                 .from("chat_messages")
@@ -180,12 +230,14 @@ export default function AdminChat() {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [selectedUserId, fetchConversations]);
+    }, [fetchConversations]);
 
     // Scroll to bottom
     useEffect(() => {
         if (scrollRef.current) {
-            const viewport = scrollRef.current.querySelector("[data-radix-scroll-area-viewport]");
+            const viewport = scrollRef.current.querySelector(
+                "[data-radix-scroll-area-viewport]"
+            );
             if (viewport) viewport.scrollTop = viewport.scrollHeight;
         }
     }, [messages]);
@@ -213,7 +265,9 @@ export default function AdminChat() {
         }
     };
 
-    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImageUpload = async (
+        e: React.ChangeEvent<HTMLInputElement>
+    ) => {
         const file = e.target.files?.[0];
         if (!file || !user || !selectedUserId) return;
         if (file.size > 5 * 1024 * 1024) {
@@ -224,9 +278,13 @@ export default function AdminChat() {
         try {
             const fileExt = file.name.split(".").pop();
             const filePath = `chat/${user.id}/${Date.now()}.${fileExt}`;
-            const { error: uploadError } = await supabase.storage.from("uploads").upload(filePath, file);
+            const { error: uploadError } = await supabase.storage
+                .from("uploads")
+                .upload(filePath, file);
             if (uploadError) throw uploadError;
-            const { data: { publicUrl } } = supabase.storage.from("uploads").getPublicUrl(filePath);
+            const {
+                data: { publicUrl },
+            } = supabase.storage.from("uploads").getPublicUrl(filePath);
             const { error } = await supabase.from("chat_messages").insert({
                 user_id: selectedUserId,
                 sender_id: user.id,
@@ -243,12 +301,25 @@ export default function AdminChat() {
         }
     };
 
+    const selectedConvo = conversations.find(
+        (c) => c.user_id === selectedUserId
+    );
+
     return (
-        <AdminLayout>
+        <SuperAdminLayout>
             <div className="flex flex-col h-[calc(100vh-120px)]">
                 <div className="mb-4">
-                    <h1 className="text-2xl font-bold">Customer Chat</h1>
-                    <p className="text-muted-foreground">Manage customer conversations</p>
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                            <Eye className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-bold">Global Chat Monitor</h1>
+                            <p className="text-muted-foreground text-sm">
+                                Oversee all customer-admin conversations in real-time
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 min-h-0">
@@ -257,7 +328,12 @@ export default function AdminChat() {
                         <CardHeader className="py-3 px-4">
                             <CardTitle className="text-sm flex items-center gap-2">
                                 <MessageCircle className="h-4 w-4" />
-                                Conversations
+                                All Conversations
+                                {conversations.length > 0 && (
+                                    <Badge variant="secondary" className="ml-auto">
+                                        {conversations.length}
+                                    </Badge>
+                                )}
                             </CardTitle>
                         </CardHeader>
                         <ScrollArea className="flex-1">
@@ -267,7 +343,9 @@ export default function AdminChat() {
                                 </div>
                             ) : conversations.length === 0 ? (
                                 <div className="text-center py-8 px-4">
-                                    <p className="text-sm text-muted-foreground">No conversations yet</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        No conversations yet
+                                    </p>
                                 </div>
                             ) : (
                                 <div className="space-y-1 px-2 pb-2">
@@ -286,19 +364,35 @@ export default function AdminChat() {
                                                         <User className="h-4 w-4 text-primary" />
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <p className="font-medium text-sm truncate">{convo.full_name}</p>
-                                                        <p className="text-xs text-muted-foreground truncate">{convo.lastMessage}</p>
+                                                        <p className="font-medium text-sm truncate">
+                                                            {convo.full_name}
+                                                        </p>
+                                                        <p className="text-xs text-muted-foreground truncate">
+                                                            {convo.lastMessage}
+                                                        </p>
+                                                        {convo.assignedAdmin && (
+                                                            <p className="text-[10px] text-muted-foreground/70 flex items-center gap-1 mt-0.5">
+                                                                <Shield className="h-2.5 w-2.5" />
+                                                                {convo.assignedAdmin}
+                                                            </p>
+                                                        )}
                                                     </div>
                                                 </div>
                                                 <div className="flex flex-col items-end gap-1 shrink-0">
                                                     <span className="text-[10px] text-muted-foreground">
-                                                        {new Date(convo.lastMessageTime).toLocaleDateString("en-NG", {
-                                                            month: "short",
-                                                            day: "numeric",
-                                                        })}
+                                                        {new Date(convo.lastMessageTime).toLocaleDateString(
+                                                            "en-NG",
+                                                            {
+                                                                month: "short",
+                                                                day: "numeric",
+                                                            }
+                                                        )}
                                                     </span>
                                                     {convo.unreadCount > 0 && (
-                                                        <Badge variant="destructive" className="text-[10px] h-5 min-w-[20px] justify-center">
+                                                        <Badge
+                                                            variant="destructive"
+                                                            className="text-[10px] h-5 min-w-[20px] justify-center"
+                                                        >
                                                             {convo.unreadCount}
                                                         </Badge>
                                                     )}
@@ -316,18 +410,38 @@ export default function AdminChat() {
                         {selectedUserId ? (
                             <>
                                 <CardHeader className="py-3 px-4 border-b">
-                                    <CardTitle className="text-sm">
-                                        {conversations.find(c => c.user_id === selectedUserId)?.full_name || "Customer"}
-                                        <span className="text-xs text-muted-foreground ml-2">
-                                            {conversations.find(c => c.user_id === selectedUserId)?.email}
-                                        </span>
-                                    </CardTitle>
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <CardTitle className="text-sm flex items-center gap-2">
+                                                <User className="h-4 w-4" />
+                                                {selectedConvo?.full_name || "Customer"}
+                                                <span className="text-xs text-muted-foreground font-normal ml-1">
+                                                    {selectedConvo?.email}
+                                                </span>
+                                            </CardTitle>
+                                            {selectedConvo?.assignedAdmin && (
+                                                <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                                                    <Shield className="h-3 w-3" />
+                                                    Handled by:{" "}
+                                                    <span className="font-medium">
+                                                        {selectedConvo.assignedAdmin}
+                                                    </span>
+                                                </p>
+                                            )}
+                                        </div>
+                                        <Badge variant="outline" className="text-[10px]">
+                                            <Eye className="h-3 w-3 mr-1" />
+                                            Oversight Mode
+                                        </Badge>
+                                    </div>
                                 </CardHeader>
 
                                 <ScrollArea ref={scrollRef} className="flex-1 p-4">
                                     {messages.length === 0 ? (
                                         <div className="text-center py-8">
-                                            <p className="text-sm text-muted-foreground">No messages in this conversation</p>
+                                            <p className="text-sm text-muted-foreground">
+                                                No messages in this conversation
+                                            </p>
                                         </div>
                                     ) : (
                                         <div className="space-y-3">
@@ -336,7 +450,8 @@ export default function AdminChat() {
                                                 return (
                                                     <div
                                                         key={msg.id}
-                                                        className={`flex ${isAdmin ? "justify-end" : "justify-start"}`}
+                                                        className={`flex ${isAdmin ? "justify-end" : "justify-start"
+                                                            }`}
                                                     >
                                                         <div
                                                             className={`max-w-[75%] rounded-2xl px-4 py-2 ${isAdmin
@@ -344,23 +459,61 @@ export default function AdminChat() {
                                                                 : "bg-muted rounded-bl-md"
                                                                 }`}
                                                         >
+                                                            {/* Sender Badge */}
+                                                            <p
+                                                                className={`text-[10px] font-semibold mb-1 flex items-center gap-1 ${isAdmin
+                                                                    ? "text-primary-foreground/70"
+                                                                    : "text-muted-foreground"
+                                                                    }`}
+                                                            >
+                                                                {isAdmin ? (
+                                                                    <>
+                                                                        <Shield className="h-2.5 w-2.5" /> Admin
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <User className="h-2.5 w-2.5" /> Customer
+                                                                    </>
+                                                                )}
+                                                            </p>
                                                             {msg.image_url && (
                                                                 <img
                                                                     src={msg.image_url}
                                                                     alt="Shared image"
                                                                     className="rounded-lg max-w-full mb-1 cursor-pointer"
-                                                                    onClick={() => window.open(msg.image_url!, "_blank")}
+                                                                    onClick={() =>
+                                                                        window.open(msg.image_url!, "_blank")
+                                                                    }
                                                                 />
                                                             )}
                                                             {msg.message && (
-                                                                <p className="text-sm whitespace-pre-wrap break-words">{msg.message}</p>
+                                                                <p className="text-sm whitespace-pre-wrap break-words">
+                                                                    {msg.message}
+                                                                </p>
                                                             )}
-                                                            <p className={`text-[10px] mt-1 ${isAdmin ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
-                                                                {new Date(msg.created_at).toLocaleTimeString("en-NG", {
-                                                                    hour: "2-digit",
-                                                                    minute: "2-digit",
-                                                                })}
-                                                            </p>
+                                                            <div className={`flex items-center gap-1.5 mt-1`}>
+                                                                <p
+                                                                    className={`text-[10px] ${isAdmin
+                                                                        ? "text-primary-foreground/60"
+                                                                        : "text-muted-foreground"
+                                                                        }`}
+                                                                >
+                                                                    {new Date(
+                                                                        msg.created_at
+                                                                    ).toLocaleTimeString("en-NG", {
+                                                                        hour: "2-digit",
+                                                                        minute: "2-digit",
+                                                                    })}
+                                                                </p>
+                                                                {msg.is_read && isAdmin && (
+                                                                    <CheckCheck
+                                                                        className={`h-3 w-3 ${isAdmin
+                                                                            ? "text-primary-foreground/60"
+                                                                            : "text-blue-500"
+                                                                            }`}
+                                                                    />
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 );
@@ -396,7 +549,7 @@ export default function AdminChat() {
                                                     sendMessage();
                                                 }
                                             }}
-                                            placeholder="Type a reply..."
+                                            placeholder="Reply as Super Admin..."
                                             className="h-9 text-sm"
                                             disabled={sending}
                                         />
@@ -420,14 +573,19 @@ export default function AdminChat() {
                         ) : (
                             <div className="flex-1 flex items-center justify-center">
                                 <div className="text-center">
-                                    <MessageCircle className="h-12 w-12 text-muted-foreground/20 mx-auto mb-3" />
-                                    <p className="text-muted-foreground">Select a conversation to start chatting</p>
+                                    <Eye className="h-12 w-12 text-muted-foreground/20 mx-auto mb-3" />
+                                    <p className="text-muted-foreground font-medium">
+                                        Select a conversation to monitor
+                                    </p>
+                                    <p className="text-xs text-muted-foreground/60 mt-1">
+                                        You can view and participate in any customer-admin chat
+                                    </p>
                                 </div>
                             </div>
                         )}
                     </Card>
                 </div>
             </div>
-        </AdminLayout>
+        </SuperAdminLayout>
     );
 }

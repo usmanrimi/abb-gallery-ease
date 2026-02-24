@@ -16,6 +16,7 @@ import {
   ShoppingCart,
   Truck,
   FolderOpen,
+  MessageCircle,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,7 @@ const navItems = [
   { href: "/super-admin/orders", label: "Orders", icon: ShoppingCart },
   { href: "/super-admin/deliveries", label: "Deliveries", icon: Truck },
   { href: "/super-admin/customers", label: "All Customers", icon: Users },
+  { href: "/super-admin/chat", label: "Chat Monitor", icon: MessageCircle },
   { href: "/super-admin/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/super-admin/audit-log", label: "Audit Log", icon: ScrollText },
   { href: "/super-admin/settings", label: "Global Settings", icon: Settings },

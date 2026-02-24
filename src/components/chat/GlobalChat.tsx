@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, MessageCircle, X, Loader2, Image as ImageIcon } from "lucide-react";
+import { Send, MessageCircle, X, Loader2, Image as ImageIcon, CheckCheck } from "lucide-react";
 import { toast } from "sonner";
 
 interface ChatMessage {
@@ -25,9 +25,16 @@ export function GlobalChat() {
     const [newMessage, setNewMessage] = useState("");
     const [loading, setLoading] = useState(false);
     const [sending, setSending] = useState(false);
+    const [messageSent, setMessageSent] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
     const scrollAreaRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const isOpenRef = useRef(false);
+
+    // Keep ref in sync
+    useEffect(() => {
+        isOpenRef.current = isOpen;
+    }, [isOpen]);
 
     const isAdmin = role === "admin_ops" || role === "super_admin";
     const senderRole = isAdmin ? "admin" : "customer";
@@ -107,12 +114,16 @@ export function GlobalChat() {
                     const newMsg = payload.new as ChatMessage;
                     // Only add if relevant to this user
                     if (newMsg.user_id === user.id || newMsg.sender_id === user.id) {
-                        setMessages(prev => [...prev, newMsg]);
-                        if (newMsg.sender_id !== user.id && !isOpen) {
+                        // Deduplicate: don't add if already exists
+                        setMessages(prev => {
+                            if (prev.some(m => m.id === newMsg.id)) return prev;
+                            return [...prev, newMsg];
+                        });
+                        if (newMsg.sender_id !== user.id && !isOpenRef.current) {
                             setUnreadCount(prev => prev + 1);
                         }
                         // Mark as read if chat is open
-                        if (isOpen && newMsg.sender_id !== user.id) {
+                        if (isOpenRef.current && newMsg.sender_id !== user.id) {
                             supabase
                                 .from("chat_messages")
                                 .update({ is_read: true })
@@ -149,6 +160,7 @@ export function GlobalChat() {
     const sendMessage = async () => {
         if (!newMessage.trim() || !user) return;
         setSending(true);
+        setMessageSent(false);
         try {
             const { error } = await supabase.from("chat_messages").insert({
                 user_id: user.id,
@@ -160,6 +172,8 @@ export function GlobalChat() {
 
             if (error) throw error;
             setNewMessage("");
+            setMessageSent(true);
+            setTimeout(() => setMessageSent(false), 2000);
         } catch (error: any) {
             toast.error("Failed to send message");
         } finally {
@@ -283,8 +297,8 @@ export function GlobalChat() {
                                         >
                                             <div
                                                 className={`max-w-[80%] rounded-2xl px-4 py-2 ${isMe
-                                                        ? "bg-primary text-primary-foreground rounded-br-md"
-                                                        : "bg-muted rounded-bl-md"
+                                                    ? "bg-primary text-primary-foreground rounded-br-md"
+                                                    : "bg-muted rounded-bl-md"
                                                     }`}
                                             >
                                                 {msg.image_url && (
@@ -347,6 +361,8 @@ export function GlobalChat() {
                             >
                                 {sending ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : messageSent ? (
+                                    <CheckCheck className="h-4 w-4" />
                                 ) : (
                                     <Send className="h-4 w-4" />
                                 )}
