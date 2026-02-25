@@ -267,7 +267,9 @@ export default function PackageDetail() {
         <div className="grid gap-8 lg:grid-cols-2">
           {/* Class Section Image */}
           <div className="animate-fade-in">
-            <div className="w-full rounded-2xl bg-gradient-to-br from-primary/8 via-accent/5 to-primary/3 relative overflow-hidden flex items-center justify-center p-8 min-h-[400px]">
+            <div className="w-full rounded-2xl bg-gradient-to-br from-primary/20 via-primary/5 to-accent/15 relative overflow-hidden flex items-center justify-center p-8 min-h-[400px] border border-primary/10">
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+              <div className="absolute inset-y-0 left-0 w-px bg-gradient-to-b from-transparent via-primary/30 to-transparent" />
               {classDisplayImage && classDisplayImage !== "/placeholder.svg" ? (
                 <img
                   src={classDisplayImage}

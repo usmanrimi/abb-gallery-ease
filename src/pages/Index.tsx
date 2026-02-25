@@ -212,7 +212,9 @@ const Index = () => {
                       className="overflow-hidden animate-slide-up"
                       style={{ animationDelay: `${i * 0.1}s` }}
                     >
-                      <div className="aspect-[4/3] bg-gradient-to-br from-primary/10 to-accent/10 relative overflow-hidden flex items-center justify-center">
+                      <div className="aspect-[4/3] bg-gradient-to-br from-primary/20 via-primary/5 to-accent/15 relative overflow-hidden flex items-center justify-center border-b border-primary/10">
+                        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+                        <div className="absolute inset-y-0 left-0 w-px bg-gradient-to-b from-transparent via-primary/30 to-transparent" />
                         {category.image_url ? (
                           <img
                             src={category.image_url}
