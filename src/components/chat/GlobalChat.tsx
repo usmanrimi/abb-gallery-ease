@@ -146,7 +146,7 @@ export function GlobalChat() {
             console.log("Unsubscribing from chat_messages");
             supabase.removeChannel(channel);
         };
-    }, [user.id]); // Stable: only depends on user.id
+    }, [user?.id]); // Stable: only depends on user.id
 
     // Scroll to bottom on new messages
     useEffect(() => {
