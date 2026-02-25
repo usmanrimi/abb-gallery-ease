@@ -87,7 +87,9 @@ export default function Categories() {
                   className="overflow-hidden h-full animate-slide-up"
                   style={{ animationDelay: `${i * 0.1}s` }}
                 >
-                  <div className="aspect-[16/10] bg-gradient-to-br from-primary/10 to-accent/10 relative overflow-hidden flex items-center justify-center p-4">
+                  <div className="aspect-[16/10] bg-gradient-to-br from-primary/20 via-primary/10 to-accent/20 relative overflow-hidden flex items-center justify-center p-4">
+                    <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+                    <div className="absolute inset-y-0 left-0 w-px bg-gradient-to-b from-transparent via-primary/30 to-transparent" />
                     {category.image_url ? (
                       <img src={category.image_url} alt={category.name} className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform" />
                     ) : (

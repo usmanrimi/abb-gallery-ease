@@ -195,8 +195,9 @@ export default function SuperAdminChat() {
 
     // Subscribe to realtime
     useEffect(() => {
+        console.log("Subscribing to superadmin global chat realtime...");
         const channel = supabase
-            .channel("superadmin_chat_realtime")
+            .channel("superadmin_chat_all_messages")
             .on(
                 "postgres_changes",
                 {
@@ -206,31 +207,41 @@ export default function SuperAdminChat() {
                 },
                 (payload) => {
                     const newMsg = payload.new as ChatMessage;
+                    console.log("SuperAdmin realtime message received:", newMsg);
+
                     const currentSelectedId = selectedUserIdRef.current;
-                    if (currentSelectedId && newMsg.user_id === currentSelectedId) {
+                    if (currentSelectedId && (newMsg.user_id === currentSelectedId || newMsg.sender_id === currentSelectedId)) {
                         setMessages((prev) => {
                             // Deduplicate
                             if (prev.some((m) => m.id === newMsg.id)) return prev;
                             return [...prev, newMsg];
                         });
-                        // Mark as read since super admin has this convo open
+
+                        // Mark as read if super admin has this convo open and it's from customer
                         if (newMsg.sender_role === "customer") {
                             supabase
                                 .from("chat_messages")
                                 .update({ is_read: true })
-                                .eq("id", newMsg.id);
+                                .eq("id", newMsg.id)
+                                .then(({ error }) => {
+                                    if (error) console.error("Error marking message as read:", error);
+                                });
                         }
                     }
-                    // Refresh conversations list
+
+                    // Always refresh conversations list to update oversight list
                     fetchConversations();
                 }
             )
-            .subscribe();
+            .subscribe((status) => {
+                console.log("SuperAdmin chat subscription status:", status);
+            });
 
         return () => {
+            console.log("Unsubscribing from superadmin chat realtime");
             supabase.removeChannel(channel);
         };
-    }, [fetchConversations]);
+    }, [fetchConversations]); // Removed selectedUserId to keep subscription stable
 
     // Scroll to bottom
     useEffect(() => {
@@ -238,27 +249,47 @@ export default function SuperAdminChat() {
             const viewport = scrollRef.current.querySelector(
                 "[data-radix-scroll-area-viewport]"
             );
-            if (viewport) viewport.scrollTop = viewport.scrollHeight;
+            if (viewport) {
+                setTimeout(() => {
+                    viewport.scrollTop = viewport.scrollHeight;
+                }, 100);
+            }
         }
     }, [messages]);
 
     const sendMessage = async () => {
         if (!newMessage.trim() || !user || !selectedUserId) return;
+
+        const messageText = newMessage.trim();
+        setNewMessage(""); // Clear early
         setSending(true);
         setMessageSent(false);
+
         try {
-            const { error } = await supabase.from("chat_messages").insert({
+            const { data, error } = await supabase.from("chat_messages").insert({
                 user_id: selectedUserId,
                 sender_id: user.id,
-                message: newMessage.trim(),
+                message: messageText,
                 sender_role: "admin",
                 is_read: false,
-            });
+            }).select().single();
+
             if (error) throw error;
-            setNewMessage("");
+
+            if (data) {
+                setMessages(prev => {
+                    if (prev.some(m => m.id === data.id)) return prev;
+                    return [...prev, data];
+                });
+            }
+
             setMessageSent(true);
             setTimeout(() => setMessageSent(false), 2000);
+
+            // Refresh conversations list
+            fetchConversations();
         } catch (error: any) {
+            setNewMessage(messageText); // Restore on error
             toast.error("Failed to send message");
         } finally {
             setSending(false);

@@ -145,8 +145,9 @@ export default function AdminChat() {
 
     // Subscribe to realtime
     useEffect(() => {
+        console.log("Subscribing to admin chat realtime...");
         const channel = supabase
-            .channel("admin_chat_realtime")
+            .channel("admin_chat_all_messages")
             .on(
                 "postgres_changes",
                 {
@@ -156,57 +157,87 @@ export default function AdminChat() {
                 },
                 (payload) => {
                     const newMsg = payload.new as ChatMessage;
+                    console.log("Admin realtime message received:", newMsg);
+
                     const currentSelectedId = selectedUserIdRef.current;
-                    if (currentSelectedId && newMsg.user_id === currentSelectedId) {
-                        // Deduplicate: don't add if already exists
+                    if (currentSelectedId && (newMsg.user_id === currentSelectedId || newMsg.sender_id === currentSelectedId)) {
+                        // Update messages if this conversation is active
                         setMessages(prev => {
                             if (prev.some(m => m.id === newMsg.id)) return prev;
                             return [...prev, newMsg];
                         });
-                        // Mark as read since admin has this convo open
+
+                        // Mark as read if it's from the customer
                         if (newMsg.sender_role === "customer") {
                             supabase
                                 .from("chat_messages")
                                 .update({ is_read: true })
-                                .eq("id", newMsg.id);
+                                .eq("id", newMsg.id)
+                                .then(({ error }) => {
+                                    if (error) console.error("Error marking message as read:", error);
+                                });
                         }
                     }
-                    // Refresh conversations list
+
+                    // Always refresh conversations list to update last message/unread count
                     fetchConversations();
                 }
             )
-            .subscribe();
+            .subscribe((status) => {
+                console.log("Admin chat subscription status:", status);
+            });
 
         return () => {
+            console.log("Unsubscribing from admin chat realtime");
             supabase.removeChannel(channel);
         };
-    }, [selectedUserId, fetchConversations]);
+    }, [fetchConversations]); // Removed selectedUserId to keep subscription stable
 
     // Scroll to bottom
     useEffect(() => {
         if (scrollRef.current) {
             const viewport = scrollRef.current.querySelector("[data-radix-scroll-area-viewport]");
-            if (viewport) viewport.scrollTop = viewport.scrollHeight;
+            if (viewport) {
+                setTimeout(() => {
+                    viewport.scrollTop = viewport.scrollHeight;
+                }, 100);
+            }
         }
     }, [messages]);
 
     const sendMessage = async () => {
         if (!newMessage.trim() || !user || !selectedUserId) return;
+
+        const messageText = newMessage.trim();
+        setNewMessage(""); // Clear early
         setSending(true);
         setMessageSent(false);
+
         try {
-            const { error } = await supabase.from("chat_messages").insert({
+            const { data, error } = await supabase.from("chat_messages").insert({
                 user_id: selectedUserId,
                 sender_id: user.id,
-                message: newMessage.trim(),
+                message: messageText,
                 sender_role: "admin",
                 is_read: false,
-            });
+            }).select().single();
+
             if (error) throw error;
-            setNewMessage("");
+
+            if (data) {
+                setMessages(prev => {
+                    if (prev.some(m => m.id === data.id)) return prev;
+                    return [...prev, data];
+                });
+            }
+
             setMessageSent(true);
             setTimeout(() => setMessageSent(false), 2000);
+
+            // Refresh conversation list to show the new outgoing message
+            fetchConversations();
         } catch (error: any) {
+            setNewMessage(messageText); // Restore on error
             toast.error("Failed to send message");
         } finally {
             setSending(false);

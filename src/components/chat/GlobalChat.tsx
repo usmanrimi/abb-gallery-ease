@@ -101,50 +101,62 @@ export function GlobalChat() {
     // Subscribe to realtime updates
     useEffect(() => {
         if (!user) return;
+
+        console.log("Subscribing to chat_messages for user:", user.id);
         const channel = supabase
-            .channel("chat_messages_realtime")
+            .channel(`chat:global:${user.id}`)
             .on(
                 "postgres_changes",
                 {
                     event: "INSERT",
                     schema: "public",
                     table: "chat_messages",
+                    filter: `user_id=eq.${user.id}`,
                 },
                 (payload) => {
                     const newMsg = payload.new as ChatMessage;
-                    // Only add if relevant to this user
-                    if (newMsg.user_id === user.id || newMsg.sender_id === user.id) {
-                        // Deduplicate: don't add if already exists
-                        setMessages(prev => {
-                            if (prev.some(m => m.id === newMsg.id)) return prev;
-                            return [...prev, newMsg];
-                        });
-                        if (newMsg.sender_id !== user.id && !isOpenRef.current) {
-                            setUnreadCount(prev => prev + 1);
-                        }
-                        // Mark as read if chat is open
-                        if (isOpenRef.current && newMsg.sender_id !== user.id) {
-                            supabase
-                                .from("chat_messages")
-                                .update({ is_read: true })
-                                .eq("id", newMsg.id);
-                        }
+                    console.log("Realtime message received:", newMsg);
+
+                    setMessages(prev => {
+                        if (prev.some(m => m.id === newMsg.id)) return prev;
+                        return [...prev, newMsg];
+                    });
+
+                    if (newMsg.sender_id !== user.id && !isOpenRef.current) {
+                        setUnreadCount(prev => prev + 1);
+                    }
+
+                    // Mark as read if chat is open
+                    if (isOpenRef.current && newMsg.sender_id !== user.id) {
+                        supabase
+                            .from("chat_messages")
+                            .update({ is_read: true })
+                            .eq("id", newMsg.id)
+                            .then(({ error }) => {
+                                if (error) console.error("Error marking message as read:", error);
+                            });
                     }
                 }
             )
-            .subscribe();
+            .subscribe((status) => {
+                console.log("Chat subscription status:", status);
+            });
 
         return () => {
+            console.log("Unsubscribing from chat_messages");
             supabase.removeChannel(channel);
         };
-    }, [user, isOpen]);
+    }, [user.id]); // Stable: only depends on user.id
 
     // Scroll to bottom on new messages
     useEffect(() => {
         if (scrollAreaRef.current) {
             const scrollContainer = scrollAreaRef.current.querySelector("[data-radix-scroll-area-viewport]");
             if (scrollContainer) {
-                scrollContainer.scrollTop = scrollContainer.scrollHeight;
+                // Use a small timeout to ensure DOM is updated
+                setTimeout(() => {
+                    scrollContainer.scrollTop = scrollContainer.scrollHeight;
+                }, 100);
             }
         }
     }, [messages]);
@@ -159,22 +171,35 @@ export function GlobalChat() {
 
     const sendMessage = async () => {
         if (!newMessage.trim() || !user) return;
+
+        const messageText = newMessage.trim();
+        setNewMessage(""); // Clear early for better UX
         setSending(true);
         setMessageSent(false);
+
         try {
-            const { error } = await supabase.from("chat_messages").insert({
+            const { data, error } = await supabase.from("chat_messages").insert({
                 user_id: user.id,
                 sender_id: user.id,
-                message: newMessage.trim(),
+                message: messageText,
                 sender_role: senderRole,
                 is_read: false,
-            });
+            }).select().single();
 
             if (error) throw error;
-            setNewMessage("");
+
+            // Add to messages immediately if not already there from realtime
+            if (data) {
+                setMessages(prev => {
+                    if (prev.some(m => m.id === data.id)) return prev;
+                    return [...prev, data];
+                });
+            }
+
             setMessageSent(true);
             setTimeout(() => setMessageSent(false), 2000);
         } catch (error: any) {
+            setNewMessage(messageText); // Restore on error
             toast.error("Failed to send message");
         } finally {
             setSending(false);
