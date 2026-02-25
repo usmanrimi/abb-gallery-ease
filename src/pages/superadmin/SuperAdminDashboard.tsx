@@ -13,7 +13,11 @@ import {
   CreditCard,
   Loader2,
   Activity,
+  RefreshCw,
+  Package,
 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import { SuperAdminLayout } from "@/components/admin/SuperAdminLayout";
 
 interface DashboardMetrics {
@@ -34,6 +38,14 @@ interface Alert {
   count: number;
 }
 
+interface ActivityLog {
+  id: string;
+  actor_email: string;
+  action: string;
+  details: string;
+  created_at: string;
+}
+
 export default function SuperAdminDashboard() {
   const [metrics, setMetrics] = useState<DashboardMetrics>({
     totalCustomers: 0,
@@ -47,11 +59,32 @@ export default function SuperAdminDashboard() {
     deliveriesPending: 0,
   });
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchMetrics();
+    fetchActivities();
   }, []);
+
+  const fetchActivities = async () => {
+    try {
+      const { data } = await supabase
+        .from("audit_log")
+        .select("id, actor_id, action, details, created_at")
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      if (data) {
+        setActivities(data.map(log => ({
+          ...log,
+          actor_email: (log as any).actor_email || (log as any).actor_id?.slice(0, 8) || "System"
+        })) as ActivityLog[]);
+      }
+    } catch (error) {
+      console.error("Error fetching activities:", error);
+    }
+  };
 
   const fetchMetrics = async () => {
     setLoading(true);
@@ -93,12 +126,12 @@ export default function SuperAdminDashboard() {
 
         const ordersToday = orders.filter(o => o.created_at >= todayStart).length;
         const ordersThisWeek = orders.filter(o => o.created_at >= weekStart).length;
-        const pendingPayments = orders.filter(o => 
+        const pendingPayments = orders.filter(o =>
           o.status === "pending_payment" || o.payment_status === "pending_payment"
         ).length;
         const waitingForPrice = orders.filter(o => o.status === "waiting_for_price").length;
 
-        const deliveriesPending = (deliveries || []).filter(d => 
+        const deliveriesPending = (deliveries || []).filter(d =>
           d.status === "ready" || d.status === "out_for_delivery"
         ).length;
 
@@ -150,9 +183,15 @@ export default function SuperAdminDashboard() {
   return (
     <SuperAdminLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold font-display">Super Admin Dashboard</h1>
-          <p className="text-muted-foreground">Owner/HQ overview of the entire business</p>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold font-display">Super Admin Dashboard</h1>
+            <p className="text-muted-foreground">Owner/HQ overview of the entire business</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => { fetchMetrics(); fetchActivities(); }} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+            Refresh Overview
+          </Button>
         </div>
 
         {/* Metrics Grid */}
@@ -178,27 +217,96 @@ export default function SuperAdminDashboard() {
           ))}
         </div>
 
-        {/* Operational Alerts */}
-        {alerts.length > 0 && (
-          <Card>
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Operational Alerts */}
+          <div className="lg:col-span-1 space-y-6">
+            {alerts.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                    Operational Alerts
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {alerts.map((alert, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                      <span className="text-sm font-medium">{alert.message}</span>
+                      <Badge variant={alert.type === "warning" ? "destructive" : "secondary"}>
+                        {alert.count}
+                      </Badge>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Quick Access</CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 gap-2">
+                <Link to="/super-admin/admins">
+                  <Button variant="outline" className="w-full justify-start gap-2">
+                    <Users className="h-4 w-4" /> Admin Management
+                  </Button>
+                </Link>
+                <Link to="/super-admin/categories">
+                  <Button variant="outline" className="w-full justify-start gap-2">
+                    <Package className="h-4 w-4" /> Category Management
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Activity Logs */}
+          <Card className="lg:col-span-2">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-yellow-600" />
-                Operational Alerts
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Activity className="h-5 w-5 text-primary" />
+                Recent System Activity
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              {alerts.map((alert, i) => (
-                <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                  <span className="text-sm font-medium">{alert.message}</span>
-                  <Badge variant={alert.type === "warning" ? "destructive" : "secondary"}>
-                    {alert.count}
-                  </Badge>
+            <CardContent>
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
-              ))}
+              ) : activities.length === 0 ? (
+                <div className="py-12 text-center text-muted-foreground">
+                  <Activity className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                  <p>No recorded activity yet</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {activities.map((activity) => (
+                    <div key={activity.id} className="flex gap-4 border-b border-border/50 pb-4 last:border-0 last:pb-0">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                        <Activity className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-bold truncate">
+                            {activity.action.replace(/_/g, " ").toUpperCase()}
+                          </p>
+                          <span className="text-[10px] text-muted-foreground flex items-center gap-1 whitespace-nowrap">
+                            <Clock className="h-3 w-3" />
+                            {new Date(activity.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{activity.details}</p>
+                        <div className="mt-2 flex items-center gap-2">
+                          <Badge variant="outline" className="text-[9px] py-0 px-1.5 h-4 bg-muted/50">{activity.actor_email}</Badge>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
-        )}
+        </div>
       </div>
     </SuperAdminLayout>
   );
