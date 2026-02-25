@@ -88,14 +88,14 @@ export default function CategoryDetail() {
                   className="overflow-hidden h-full animate-slide-up"
                   style={{ animationDelay: `${i * 0.1}s` }}
                 >
-                  <div className="aspect-[4/3] bg-gradient-to-br from-primary/20 via-primary/5 to-accent/15 relative overflow-hidden flex items-center justify-center p-6 rounded-t-lg border-b border-primary/10">
-                    <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-                    <div className="absolute inset-y-0 left-0 w-px bg-gradient-to-b from-transparent via-primary/30 to-transparent" />
+                  <div className="aspect-[4/3] bg-gradient-to-br from-primary/35 via-primary/10 to-accent/20 relative overflow-hidden flex items-center justify-center p-6 rounded-t-lg border-b border-primary/20">
+                    <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
+                    <div className="absolute inset-y-0 left-0 w-px bg-gradient-to-b from-transparent via-primary/50 to-transparent" />
                     {pkg.image_cover_url && pkg.image_cover_url !== "/placeholder.svg" ? (
                       <img
                         src={pkg.image_cover_url}
                         alt={pkg.name}
-                        className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                        className="max-w-full max-h-full object-contain group-hover:scale-110 transition-transform duration-500 mix-blend-multiply"
                       />
                     ) : (
                       <PackageIcon className="h-16 w-16 text-primary/30" />

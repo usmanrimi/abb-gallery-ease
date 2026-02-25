@@ -267,14 +267,14 @@ export default function PackageDetail() {
         <div className="grid gap-8 lg:grid-cols-2">
           {/* Class Section Image */}
           <div className="animate-fade-in">
-            <div className="w-full rounded-2xl bg-gradient-to-br from-primary/20 via-primary/5 to-accent/15 relative overflow-hidden flex items-center justify-center p-8 min-h-[400px] border border-primary/10">
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-              <div className="absolute inset-y-0 left-0 w-px bg-gradient-to-b from-transparent via-primary/30 to-transparent" />
+            <div className="w-full rounded-2xl bg-gradient-to-br from-primary/35 via-primary/10 to-accent/25 relative overflow-hidden flex items-center justify-center p-8 min-h-[400px] border border-primary/20">
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
+              <div className="absolute inset-y-0 left-0 w-px bg-gradient-to-b from-transparent via-primary/50 to-transparent" />
               {classDisplayImage && classDisplayImage !== "/placeholder.svg" ? (
                 <img
                   src={classDisplayImage}
                   alt={pkg.name}
-                  className="max-w-full h-auto object-contain rounded-lg shadow-sm"
+                  className="max-w-full h-auto object-contain rounded-lg shadow-sm mix-blend-multiply"
                   style={{ maxHeight: "70vh" }}
                 />
               ) : (

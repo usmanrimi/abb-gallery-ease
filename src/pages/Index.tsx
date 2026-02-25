@@ -212,19 +212,19 @@ const Index = () => {
                       className="overflow-hidden animate-slide-up"
                       style={{ animationDelay: `${i * 0.1}s` }}
                     >
-                      <div className="aspect-[4/3] bg-gradient-to-br from-primary/20 via-primary/5 to-accent/15 relative overflow-hidden flex items-center justify-center border-b border-primary/10">
-                        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-                        <div className="absolute inset-y-0 left-0 w-px bg-gradient-to-b from-transparent via-primary/30 to-transparent" />
+                      <div className="aspect-[4/3] bg-gradient-to-br from-primary/35 via-primary/10 to-accent/25 relative overflow-hidden flex items-center justify-center border-b border-primary/20">
+                        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+                        <div className="absolute inset-y-0 left-0 w-px bg-gradient-to-b from-transparent via-primary/40 to-transparent" />
                         {category.image_url ? (
                           <img
                             src={category.image_url}
                             alt={category.name}
-                            className="max-w-full max-h-full object-contain p-2 group-hover:scale-105 transition-transform duration-300"
+                            className="max-w-full max-h-full object-contain p-2 group-hover:scale-110 transition-transform duration-500 mix-blend-multiply"
                           />
                         ) : (
                           <PackageIcon className="h-16 w-16 text-primary/40" />
                         )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/10 to-transparent" />
                         <div className="absolute bottom-4 left-4 right-4">
                           <h3 className="font-display font-semibold text-lg">{category.name}</h3>
                         </div>
